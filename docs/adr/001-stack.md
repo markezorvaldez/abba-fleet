@@ -1,40 +1,44 @@
 # ADR-001: Application Stack and Hosting
 
 Status: Accepted
-Date: 2026-03-12
+Date: 2026-03-15
 
 ## Context
 
 Internal fleet management web app for a small team (~5 users) in the Philippines.
 Solo developer with strong C# backend background and minimal frontend experience.
-Future contributors from the same family may join — easy onboarding matters.
+A family member repo exists on the same stack — comparison and potential future
+collaboration are considerations.
 
 ## Decision
 
 **Stack**
-- Backend: ASP.NET Core Web API (.NET 10)
-- Frontend: React + TypeScript (Vite)
+- Framework: ASP.NET Core Blazor Server (.NET 10)
+- Architecture: Vertical Slice (single project)
 - ORM: EF Core
 - Database: PostgreSQL
 
 **Local development**
-- Docker Compose runs all three services together
+- Docker Compose runs the app and PostgreSQL together
 - Anyone with Docker Desktop can clone and run with a single command
 
 **Hosting**
-- API: Railway (free tier, auto-deploys from main branch)
+- Full app (Blazor Server): Railway (free tier, auto-deploys from main branch)
 - Database: Railway PostgreSQL (built-in, same platform)
-- Frontend: Vercel (free tier, auto-deploys from main branch)
 
 ## Reasons
 
-- .NET 10 is the latest release; no reason to use an older version on a personal project
-- React is the industry standard frontend framework with the most transferable skills
-- Docker Compose makes onboarding trivial — one command, no prerequisite installs beyond Docker
-- Railway + Vercel provide free hosting with automatic GitHub-based deploys and no cold start issues
+- Blazor Server stays in C# end-to-end — no context switch to a frontend language
+- Comparable to the family repo, enabling meaningful side-by-side comparison
+- Vertical Slice organises code by feature rather than technical layer — natural fit
+  for a CRUD-heavy admin tool where each feature is self-contained
+- Single project keeps complexity low without sacrificing structure
+- Railway hosts the full app in one service — no separate frontend hosting needed
+- Docker Compose makes onboarding trivial — one command, no prerequisites beyond Docker
 
 ## Consequences
 
-- Docker Desktop must be installed locally
-- Future contributors only need Docker Desktop to get started
-- Production uses Railway/Vercel rather than Docker — local and production environments differ slightly
+- Blazor Server requires a persistent server connection (SignalR) — not suitable
+  for static hosting
+- All hosting is on Railway — no Vercel needed
+- Future contributors need .NET knowledge to work on any part of the app

@@ -10,27 +10,17 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  api:
-    build: ./src/api
+  app:
+    build: ./src/app
     ports:
       - "5000:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: "Host=db;Database=abbafleet;Username=postgres;Password=postgres"
     volumes:
-      - ./src/api:/app
+      - ./src/app:/app
     depends_on:
       - db
-
-  web:
-    build: ./src/web
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./src/web:/app
-      - /app/node_modules
-    depends_on:
-      - api
 
 volumes:
   postgres_data:
