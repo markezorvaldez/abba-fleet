@@ -1,26 +1,7 @@
 services:
-  db:
-    image: postgres:17
-    environment:
-      POSTGRES_DB: abbafleet
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
   app:
     build: ./src/app
     ports:
       - "5000:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__DefaultConnection: "Host=db;Database=abbafleet;Username=postgres;Password=postgres"
-    volumes:
-      - ./src/app:/app
-    depends_on:
-      - db
-
-volumes:
-  postgres_data:
