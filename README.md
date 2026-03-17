@@ -4,8 +4,7 @@ Internal web-based admin platform for ABBA, a trucking company based in the Phil
 
 ## Stack
 
-- **Backend:** ASP.NET Core Web API (.NET 10)
-- **Frontend:** React + TypeScript (Vite)
+- **App:** Blazor Server (.NET 10)
 - **ORM:** EF Core
 - **Database:** PostgreSQL
 - **Local dev:** Docker Compose
@@ -14,10 +13,13 @@ Internal web-based admin platform for ABBA, a trucking company based in the Phil
 
 ```
 src/
-  api/    ← ASP.NET Core Web API
-  web/    ← React frontend
+  app/              ← Blazor Server project
+    Features/       ← one folder per feature (vertical slice)
+    Infrastructure/ ← cross-cutting concerns (DbContext, Identity, migrations)
+    Components/     ← shared layout components
+    Pages/          ← Razor Pages (login/logout)
 docs/
-  adr/    ← Architecture Decision Records
+  adr/              ← Architecture Decision Records
 ```
 
 ## Running locally
@@ -28,8 +30,7 @@ Prerequisites: [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 docker compose up
 ```
 
-- API: http://localhost:5000
-- Frontend: http://localhost:5173
+App: http://localhost:5000
 
 ## Architecture decisions
 
