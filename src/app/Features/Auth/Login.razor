@@ -1,0 +1,55 @@
+@page "/account/login"
+@using AbbaFleet.Infrastructure
+@using AbbaFleet.Infrastructure.Data
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager NavigationManager
+
+<PageTitle>Login — ABBA Fleet</PageTitle>
+
+<h1>ABBA Fleet</h1>
+
+@if (ErrorMessage is not null)
+{
+    <p>@ErrorMessage</p>
+}
+
+<form method="post" @formname="login">
+    <AntiforgeryToken />
+    <div>
+        <label for="email">Email</label>
+        <input id="email" type="email" name="Input.Email" />
+    </div>
+    <div>
+        <label for="password">Password</label>
+        <input id="password" type="password" name="Input.Password" />
+    </div>
+    <button type="submit">Log in</button>
+</form>
+
+@code {
+    [SupplyParameterFromForm(FormName = "login")]
+    private LoginInput Input { get; set; } = default!;
+
+    private string? ErrorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Input is null || string.IsNullOrEmpty(Input.Email) || string.IsNullOrEmpty(Input.Password))
+            return;
+
+        var result = await SignInManager.PasswordSignInAsync(
+            Input.Email, Input.Password, isPersistent: true, lockoutOnFailure: false);
+
+        if (result.Succeeded)
+            NavigationManager.NavigateTo(AppRoutes.Dashboard);
+        else
+            ErrorMessage = "Invalid email or password.";
+    }
+
+    private sealed class LoginInput
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,18 @@
+@page "/account/logout"
+@using AbbaFleet.Infrastructure
+@using AbbaFleet.Infrastructure.Data
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+            await SignInManager.SignOutAsync();
+
+        NavigationManager.NavigateTo(AppRoutes.Login);
+    }
+}

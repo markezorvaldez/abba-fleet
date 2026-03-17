@@ -32,4 +32,11 @@ Implements [MAR-XX](https://linear.app/mark-valdez/issue/MAR-XX)
 <!-- Add screenshots showing the feature working locally. Delete this section if not applicable. -->
 ```
 
+   Append this footnote after the template body (not part of the template itself):
+
+   ```
+   ---
+   🤖 Generated with [Claude Code](https://claude.ai/claude-code)
+   ```
+
 4. Return the PR URL.
