@@ -1,3 +1,5 @@
+using Xunit;
+
 namespace AbbaFleet.IntegrationTests.Fixtures;
 
 [CollectionDefinition("Integration")]

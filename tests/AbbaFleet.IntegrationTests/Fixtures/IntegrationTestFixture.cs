@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Testcontainers.PostgreSql;
+using Xunit;
 
 namespace AbbaFleet.IntegrationTests.Fixtures;
 
