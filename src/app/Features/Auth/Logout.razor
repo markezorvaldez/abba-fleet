@@ -13,6 +13,6 @@
         if (authState.User.Identity?.IsAuthenticated == true)
             await SignInManager.SignOutAsync();
 
-        NavigationManager.NavigateTo(AppRoutes.Login);
+        NavigationManager.NavigateTo(AppRoutes.Login, forceLoad: true);
     }
 }

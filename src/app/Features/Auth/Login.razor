@@ -42,7 +42,7 @@
             Input.Email, Input.Password, isPersistent: true, lockoutOnFailure: false);
 
         if (result.Succeeded)
-            NavigationManager.NavigateTo(AppRoutes.Dashboard);
+            NavigationManager.NavigateTo(AppRoutes.Dashboard, forceLoad: true);
         else
             ErrorMessage = "Invalid email or password.";
     }
