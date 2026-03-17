@@ -15,6 +15,18 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - run: dotnet restore src/app
-      - run: dotnet build src/app --no-restore
-      - run: dotnet test src/app --no-build --verbosity normal
+      - run: dotnet restore abba-fleet.sln
+      - run: dotnet build abba-fleet.sln --no-restore
+      - run: dotnet format abba-fleet.sln --verify-no-changes
+
+  test-integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet restore abba-fleet.sln
+      - run: dotnet test tests/AbbaFleet.IntegrationTests --no-restore --verbosity normal
