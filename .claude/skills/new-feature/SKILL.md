@@ -1,3 +1,9 @@
+---
+name: new-feature
+description: Scaffold a new vertical slice feature folder. Use this when the user asks to create a new feature, page, or section of the app. Requires the feature name as the argument.
+allowed-tools: Bash, Write
+---
+
 Scaffold a new vertical slice feature folder for the feature name provided as the argument.
 
 1. Create the folder `src/app/Features/$ARGUMENTS/`

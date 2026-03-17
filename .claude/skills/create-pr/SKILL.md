@@ -1,3 +1,9 @@
+---
+name: create-pr
+description: Create a pull request for the current branch linked to the Linear ticket. Use this when the user asks to create or raise a PR. Do not use if the user explicitly says not to use the skill.
+allowed-tools: Bash
+---
+
 Create a pull request for the current branch.
 
 1. Run `git log main..HEAD --oneline` to see what commits are included.

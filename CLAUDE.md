@@ -41,12 +41,5 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ```
 
 ## Constraints
-- **Host SDK:** Host machine has .NET 9 — `dotnet ef` cannot run on the host. Use the `/new-migration` command instead.
+- **Host SDK:** Host machine has .NET 9 — `dotnet ef` cannot run on the host. Use the `/new-migration` skill instead.
 - **File deletion:** `rm -rf` is denied in user settings — ask the user to manually delete folders when needed.
-
-## Slash commands
-If the user asks to do something that matches a slash command below, invoke that command unless they explicitly say not to.
-
-- `/new-migration` — add an EF Core migration
-- `/new-feature` — scaffold a new vertical slice feature folder
-- `/create-pr` — create a pull request with Linear ticket linked
