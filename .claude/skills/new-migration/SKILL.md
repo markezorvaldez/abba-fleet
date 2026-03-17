@@ -1,7 +1,6 @@
 ---
 name: new-migration
 description: Add a new EF Core migration. Use this when the user asks to add a migration or when schema changes need to be persisted. Requires a migration name as the argument.
-allowed-tools: Bash
 ---
 
 Add a new EF Core migration with the name provided as the argument.

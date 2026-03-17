@@ -1,7 +1,6 @@
 ---
 name: create-pr
 description: Create a pull request for the current branch linked to the Linear ticket. Use this when the user asks to create or raise a PR. Do not use if the user explicitly says not to use the skill.
-allowed-tools: Bash
 ---
 
 Create a pull request for the current branch.
@@ -22,15 +21,15 @@ Implements [MAR-XX](https://linear.app/mark-valdez/issue/MAR-XX)
 
 - <bullet points summarising what changed>
 
-## Screenshots
-
-<!-- Add screenshots showing the feature working locally. Delete this section if not applicable. -->
-
 ## Done when checklist
 
 - [ ] Acceptance criteria from the Linear issue are met
 - [ ] Tests written where applicable
 - [ ] No debug code or commented-out code left in
+
+## Screenshots
+
+<!-- Add screenshots showing the feature working locally. Delete this section if not applicable. -->
 ```
 
 4. Return the PR URL.
