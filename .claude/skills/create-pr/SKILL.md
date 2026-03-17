@@ -17,9 +17,14 @@ Create a pull request for the current branch.
 
 Implements [MAR-XX](https://linear.app/mark-valdez/issue/MAR-XX)
 
-## Changes
+<1-3 sentence behaviour-level summary — what the user can now do, not what files changed.
+Reviewers can see the diff; they need context, not a file list.>
 
-- <bullet points summarising what changed>
+## Notes
+
+<Only include if there are non-obvious decisions worth calling out — e.g. why a particular
+approach was chosen, anything that will surprise a reviewer. Omit this section if there
+is nothing worth noting.>
 
 ## Done when checklist
 
