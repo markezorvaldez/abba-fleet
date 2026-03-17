@@ -8,6 +8,10 @@ Implements [MAR-](https://linear.app/mark-valdez/issue/MAR-)
 
 -
 
+## Screenshots
+
+<!-- Add screenshots showing the feature working locally. Delete this section if not applicable. -->
+
 ## Done when checklist
 
 - [ ] Acceptance criteria from the Linear issue are met
