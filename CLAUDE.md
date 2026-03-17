@@ -2,8 +2,9 @@
 
 ## Running locally
 ```
-docker compose up
+docker compose up --build
 ```
+Always use `--build` — source files are copied into the image at build time, so without it the container runs stale code. Remind the user to run `docker compose up --build` after every set of code changes.
 
 ## Verifying the build
 ```
@@ -17,11 +18,10 @@ src/app/                   — single Blazor Server project (.NET 10)
   Features/                — one folder per feature (vertical slice)
   Infrastructure/          — cross-cutting concerns (DbContext, Identity, migrations)
   Components/Layout/       — shared layout components
-  Pages/Account/           — Razor Pages for login/logout (outside Blazor component tree)
 docs/adr/                  — Architecture Decision Records
 ```
 
-Note: `Infrastructure/` and `Pages/Account/` are not present in the initial scaffold — they are added as features require them.
+Note: `Infrastructure/` is not present in the initial scaffold — it is added as features require it.
 
 ## Conventions
 
