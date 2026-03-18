@@ -40,6 +40,10 @@ Short imperative subject line, with the Linear ticket referenced naturally in th
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ```
 
+### Committing changes
+
+After implementing and testing, stop and let the user review the changes in their source control tool before doing any git operations. Never stage or commit unless explicitly asked.
+
 ### Pull request descriptions
 
 If a PR is already open and further changes are made, update the PR description to reflect the current state of the work. It should always accurately describe what the PR contains.
