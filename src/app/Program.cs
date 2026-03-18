@@ -2,10 +2,35 @@ using AbbaFleet;
 using AbbaFleet.Infrastructure;
 using AbbaFleet.Infrastructure.Data;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
+using Serilog.Formatting.Compact;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Railway provides DATABASE_URL as a PostgreSQL connection URI; map it to the .NET connection string
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+if (!string.IsNullOrEmpty(databaseUrl))
+{
+    var uri = new Uri(databaseUrl);
+    var userInfo = uri.UserInfo.Split(':');
+    var connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+    builder.Configuration["ConnectionStrings:DefaultConnection"] = connectionString;
+}
+
+builder.Host.UseSerilog((context, config) =>
+{
+    if (context.HostingEnvironment.IsProduction())
+    {
+        config.WriteTo.Console(new CompactJsonFormatter());
+    }
+    else
+    {
+        config.WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}");
+    }
+});
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -33,6 +58,8 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddDataProtection()
     .PersistKeysToDbContext<AppDbContext>();
 
+builder.Services.AddHostedService<MigrationHostedService>();
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
@@ -41,39 +68,26 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
+app.MapGet("/health", () => Results.Ok());
+
+app.MapGet("/account/logout", async (SignInManager<ApplicationUser> signInManager) =>
+{
+    await signInManager.SignOutAsync();
+    return Results.Redirect(AppRoutes.Login);
+});
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
-
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-    var seedEmail = app.Configuration["Seed:AdminEmail"];
-    var seedPassword = app.Configuration["Seed:AdminPassword"];
-
-    if (seedEmail != null && seedPassword != null)
-    {
-        var existing = await userManager.FindByEmailAsync(seedEmail);
-        if (existing == null)
-        {
-            var user = new ApplicationUser
-            {
-                UserName = seedEmail,
-                Email = seedEmail,
-                FullName = "Admin",
-                EmailConfirmed = true
-            };
-            await userManager.CreateAsync(user, seedPassword);
-        }
-    }
-}
 
 await app.RunAsync();
 
