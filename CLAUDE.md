@@ -40,6 +40,10 @@ Short imperative subject line, with the Linear ticket referenced naturally in th
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ```
 
+### Pull request descriptions
+
+If a PR is already open and further changes are made, update the PR description to reflect the current state of the work. It should always accurately describe what the PR contains.
+
 ### Testing after code changes
 
 After implementing any code changes, always test before considering the work done. Use judgement on the appropriate level:
