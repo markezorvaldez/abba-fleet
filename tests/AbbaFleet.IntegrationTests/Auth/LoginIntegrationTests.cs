@@ -67,7 +67,9 @@ public class LoginIntegrationTests(IntegrationTestFixture fixture)
             var name = Regex.Match(match.Value, @"name=[""']([^""']+)[""']").Groups[1].Value;
             var value = Regex.Match(match.Value, @"value=[""']([^""']*)[""']").Groups[1].Value;
             if (!string.IsNullOrEmpty(name))
+            {
                 fields[name] = value;
+            }
         }
 
         return fields;
