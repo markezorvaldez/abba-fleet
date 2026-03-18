@@ -40,6 +40,15 @@ Short imperative subject line, with the Linear ticket referenced naturally in th
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ```
 
+### Testing after code changes
+
+After implementing any code changes, always test before considering the work done. Use judgement on the appropriate level:
+
+- **Build verification** — always run `docker compose build` and confirm no errors
+- **Unit tests** — for business logic, calculations, and validations; run with `dotnet test`
+- **Playwright** — for any UI changes, use the Playwright MCP tools to verify the affected flows work correctly in the browser
+- **Integration** — for behaviour that touches the database or auth, verify end-to-end in the running app
+
 ## Constraints
 - **Host SDK:** Host machine has .NET 9 — `dotnet ef` cannot run on the host. Use the `/new-migration` skill instead.
 - **File deletion:** `rm -rf` is denied in user settings — ask the user to manually delete folders when needed.
