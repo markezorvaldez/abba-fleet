@@ -80,6 +80,12 @@ app.UseAntiforgery();
 
 app.MapGet("/health", () => Results.Ok());
 
+app.MapGet("/account/logout", async (SignInManager<ApplicationUser> signInManager) =>
+{
+    await signInManager.SignOutAsync();
+    return Results.Redirect(AppRoutes.Login);
+});
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
