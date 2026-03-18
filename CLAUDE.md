@@ -42,7 +42,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 ### Committing changes
 
-After implementing and testing, stop and let the user review the changes in their source control tool before doing any git operations. Never stage or commit unless explicitly asked.
+After implementing and testing, stop and let the user review the changes in their source control tool before doing any git operations. Never stage or commit as part of implementing a feature — only do so when the user explicitly asks to commit or sync.
 
 ### Pull request descriptions
 
