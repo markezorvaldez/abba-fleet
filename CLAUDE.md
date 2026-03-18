@@ -46,7 +46,7 @@ After implementing any code changes, always test before considering the work don
 
 - **Build verification** — always run `docker compose build` and confirm no errors
 - **Unit tests** — for business logic, calculations, and validations; run with `dotnet test`
-- **Playwright** — for any UI changes, use the Playwright MCP tools to verify the affected flows work correctly in the browser
+- **Playwright** — for any UI changes, use the Playwright MCP tools to verify the affected flows work correctly in the browser. Save screenshots to `C:/Repositories/screenshots/abba-fleet/<TICKET-ID>/` (e.g. `01-login-page.png`, `02-dashboard.png`)
 - **Integration** — for behaviour that touches the database or auth, verify end-to-end in the running app
 
 ## Constraints
