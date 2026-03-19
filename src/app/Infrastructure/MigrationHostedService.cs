@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using AbbaFleet.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -37,10 +38,11 @@ public class MigrationHostedService(IServiceProvider serviceProvider, IConfigura
         if (seedAdmin is not null)
         {
             // Upgrade path: grant all permissions if the seed admin was created before permissions were introduced
-            if (seedAdmin.Permissions.Count == 0)
+            var existingClaims = await userManager.GetClaimsAsync(seedAdmin);
+            var hasPermissions = existingClaims.Any(c => c.Type == PermissionClaimTypes.Permission);
+            if (!hasPermissions)
             {
-                seedAdmin.GrantAll();
-                await userManager.UpdateAsync(seedAdmin);
+                await GrantAllPermissionsAsync(userManager, seedAdmin);
                 logger.LogInformation("Granted all permissions to seed admin: {Email}", seedEmail);
             }
 
@@ -60,16 +62,24 @@ public class MigrationHostedService(IServiceProvider serviceProvider, IConfigura
             EmailConfirmed = true,
             IsActive = true
         };
-        user.GrantAll();
 
         var result = await userManager.CreateAsync(user, seedPassword);
         if (result.Succeeded)
         {
+            await GrantAllPermissionsAsync(userManager, user);
             logger.LogInformation("Seed admin account created: {Email}", seedEmail);
         }
         else
         {
             logger.LogError("Failed to create seed admin: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+        }
+    }
+
+    private static async Task GrantAllPermissionsAsync(UserManager<ApplicationUser> userManager, ApplicationUser user)
+    {
+        foreach (var p in Enum.GetValues<Permission>())
+        {
+            await userManager.AddClaimAsync(user, new Claim(PermissionClaimTypes.Permission, p.ToString()));
         }
     }
 }

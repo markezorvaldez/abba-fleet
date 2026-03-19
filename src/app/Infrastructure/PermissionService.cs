@@ -31,7 +31,17 @@ public class PermissionService(
         using var scope = serviceProvider.CreateScope();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var user = await userManager.FindByIdAsync(userId);
-        // Return empty set for inactive users so in-session deactivation takes effect on next permission check
-        return (user is { IsActive: true }) ? user.Permissions : new HashSet<Permission>();
+        if (user is not { IsActive: true })
+        {
+            return new HashSet<Permission>();
+        }
+
+        var claims = await userManager.GetClaimsAsync(user);
+        return claims
+            .Where(c => c.Type == PermissionClaimTypes.Permission)
+            .Select(c => Enum.TryParse<Permission>(c.Value, out var p) ? (Permission?)p : null)
+            .Where(p => p.HasValue)
+            .Select(p => p!.Value)
+            .ToHashSet();
     }
 }

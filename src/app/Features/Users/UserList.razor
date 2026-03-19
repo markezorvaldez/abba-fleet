@@ -3,6 +3,7 @@
 @using AbbaFleet.Infrastructure.Data
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
 @attribute [Authorize]
 @rendermode InteractiveServer
 @inject UserManager<ApplicationUser> UserManager
@@ -130,6 +131,7 @@
 
 @code {
     private List<ApplicationUser> _users = [];
+    private Dictionary<string, HashSet<Permission>> _userPermissions = new();
     private bool _loading = true;
     private bool _dialogVisible;
     private ApplicationUser? _editingUser;
@@ -153,7 +155,7 @@
         }
 
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
-        _currentUserId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        _currentUserId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         await LoadUsers();
     }
@@ -162,6 +164,19 @@
     {
         _loading = true;
         _users = await UserManager.Users.OrderBy(u => u.FullName).ToListAsync<ApplicationUser>();
+
+        _userPermissions.Clear();
+        foreach (var u in _users)
+        {
+            var claims = await UserManager.GetClaimsAsync(u);
+            _userPermissions[u.Id] = claims
+                .Where(c => c.Type == PermissionClaimTypes.Permission)
+                .Select(c => Enum.TryParse<Permission>(c.Value, out var p) ? (Permission?)p : null)
+                .Where(p => p.HasValue)
+                .Select(p => p!.Value)
+                .ToHashSet();
+        }
+
         _loading = false;
     }
 
@@ -180,7 +195,7 @@
             FullName = user.FullName,
             Email = user.Email ?? string.Empty,
             IsActive = user.IsActive,
-            SelectedPermissions = user.Permissions.ToHashSet()
+            SelectedPermissions = _userPermissions.TryGetValue(user.Id, out var p) ? p.ToHashSet() : []
         };
         _dialogVisible = true;
     }
@@ -215,13 +230,17 @@
             EmailConfirmed = true,
             IsActive = true
         };
-        user.SetPermissions(_form.SelectedPermissions);
 
         var result = await UserManager.CreateAsync(user, _form.Password);
         if (!result.Succeeded)
         {
             Snackbar.Add(string.Join(", ", result.Errors.Select(e => e.Description)), Severity.Error);
             return;
+        }
+
+        foreach (var p in _form.SelectedPermissions)
+        {
+            await UserManager.AddClaimAsync(user, new Claim(PermissionClaimTypes.Permission, p.ToString()));
         }
 
         Snackbar.Add($"{user.FullName} added.", Severity.Success);
@@ -243,8 +262,26 @@
         // Protect: cannot remove own ManageUsers permission
         var effectivePermissions = _form.SelectedPermissions.ToHashSet();
         if (_editingUser.Id == _currentUserId)
+        {
             effectivePermissions.Add(Permission.ManageUsers);
-        _editingUser.SetPermissions(effectivePermissions);
+        }
+
+        var existingClaims = await UserManager.GetClaimsAsync(_editingUser);
+        var existing = existingClaims
+            .Where(c => c.Type == PermissionClaimTypes.Permission)
+            .Select(c => c.Value)
+            .ToHashSet();
+        var target = effectivePermissions.Select(p => p.ToString()).ToHashSet();
+
+        foreach (var name in target.Except(existing))
+        {
+            await UserManager.AddClaimAsync(_editingUser, new Claim(PermissionClaimTypes.Permission, name));
+        }
+
+        foreach (var name in existing.Except(target))
+        {
+            await UserManager.RemoveClaimAsync(_editingUser, new Claim(PermissionClaimTypes.Permission, name));
+        }
 
         if (_form.ResetPassword && !string.IsNullOrEmpty(_form.Password))
         {
@@ -274,8 +311,10 @@
         if (user.IsActive)
         {
             // Block if this is the last active admin
-            var activeAdmins = _users.Count(u => u.IsActive && u.HasPermission(Permission.ManageUsers));
-            if (activeAdmins <= 1 && user.HasPermission(Permission.ManageUsers))
+            var activeAdmins = _users.Count(u =>
+                u.IsActive && _userPermissions.TryGetValue(u.Id, out var perms) && perms.Contains(Permission.ManageUsers));
+            var userIsAdmin = _userPermissions.TryGetValue(user.Id, out var userPerms) && userPerms.Contains(Permission.ManageUsers);
+            if (activeAdmins <= 1 && userIsAdmin)
             {
                 Snackbar.Add("Cannot deactivate the last admin with Manage Users permission.", Severity.Error);
                 return;

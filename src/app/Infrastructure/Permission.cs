@@ -1,5 +1,10 @@
 namespace AbbaFleet.Infrastructure;
 
+public static class PermissionClaimTypes
+{
+    public const string Permission = "Permission";
+}
+
 public enum Permission
 {
     DashboardAccess,

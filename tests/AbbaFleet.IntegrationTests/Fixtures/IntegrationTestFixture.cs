@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text.RegularExpressions;
 using AbbaFleet.Infrastructure;
 using AbbaFleet.Infrastructure.Data;
@@ -62,8 +63,11 @@ public class IntegrationTestFixture : IAsyncLifetime
                 EmailConfirmed = true,
                 IsActive = true
             };
-            user.GrantAll();
             await userManager.CreateAsync(user, AdminPassword);
+            foreach (var p in Enum.GetValues<Permission>())
+            {
+                await userManager.AddClaimAsync(user, new Claim(PermissionClaimTypes.Permission, p.ToString()));
+            }
         }
     }
 
