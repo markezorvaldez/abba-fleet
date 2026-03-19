@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 using Serilog;
-using Serilog.Formatting.Compact;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,9 +23,17 @@ if (!string.IsNullOrEmpty(databaseUrl))
 
 builder.Host.UseSerilog((context, config) =>
 {
+    config.ReadFrom.Configuration(context.Configuration);
+
+    config.MinimumLevel.Information()
+          .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+          .MinimumLevel.Override("Microsoft.Hosting.Lifetime", Serilog.Events.LogEventLevel.Information)
+          .Enrich.FromLogContext();
+
+    // 3. Standardize the output format
     if (context.HostingEnvironment.IsProduction())
     {
-        config.WriteTo.Console(new CompactJsonFormatter());
+        config.WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}");
     }
     else
     {
@@ -101,6 +108,8 @@ app.MapGet("/account/logout", async (SignInManager<ApplicationUser> signInManage
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+app.Logger.LogInformation("🚀 STARTSUCCESS: Railway Serilog configuration is working!");
 
 await app.RunAsync();
 
