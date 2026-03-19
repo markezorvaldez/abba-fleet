@@ -23,17 +23,32 @@ public class MigrationHostedService(IServiceProvider serviceProvider, IConfigura
 
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
-        if (await userManager.Users.AnyAsync(stoppingToken))
-        {
-            return;
-        }
-
         var seedEmail = configuration["SEED_ADMIN_EMAIL"];
         var seedPassword = configuration["SEED_ADMIN_PASSWORD"];
 
         if (seedEmail is null || seedPassword is null)
         {
-            logger.LogWarning("No users exist and SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD are not set — skipping seed");
+            logger.LogWarning("SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD are not set — skipping seed");
+            return;
+        }
+
+        var seedAdmin = await userManager.FindByEmailAsync(seedEmail);
+
+        if (seedAdmin is not null)
+        {
+            // Upgrade path: grant all permissions if the seed admin was created before permissions were introduced
+            if (seedAdmin.Permissions.Count == 0)
+            {
+                seedAdmin.GrantAll();
+                await userManager.UpdateAsync(seedAdmin);
+                logger.LogInformation("Granted all permissions to seed admin: {Email}", seedEmail);
+            }
+
+            return;
+        }
+
+        if (await userManager.Users.AnyAsync(stoppingToken))
+        {
             return;
         }
 
