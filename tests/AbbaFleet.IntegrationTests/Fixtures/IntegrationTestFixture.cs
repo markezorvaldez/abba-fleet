@@ -1,4 +1,4 @@
-using AbbaFleet;
+using System.Text.RegularExpressions;
 using AbbaFleet.Infrastructure;
 using AbbaFleet.Infrastructure.Data;
 using Microsoft.AspNetCore.Hosting;
@@ -33,8 +33,8 @@ public class IntegrationTestFixture : IAsyncLifetime
             {
                 builder.UseEnvironment("Test");
                 builder.UseSetting("ConnectionStrings:DefaultConnection", _postgres.GetConnectionString());
-                builder.UseSetting("Seed:AdminEmail", AdminEmail);
-                builder.UseSetting("Seed:AdminPassword", AdminPassword);
+                builder.UseSetting("SEED_ADMIN_EMAIL", AdminEmail);
+                builder.UseSetting("SEED_ADMIN_PASSWORD", AdminPassword);
                 builder.ConfigureServices(services =>
                 {
                     // Remove the background migration service; fixture runs setup synchronously below
@@ -54,7 +54,15 @@ public class IntegrationTestFixture : IAsyncLifetime
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         if (await userManager.FindByEmailAsync(AdminEmail) == null)
         {
-            var user = new ApplicationUser { UserName = AdminEmail, Email = AdminEmail, FullName = "Admin", EmailConfirmed = true };
+            var user = new ApplicationUser
+            {
+                UserName = AdminEmail,
+                Email = AdminEmail,
+                FullName = "Admin",
+                EmailConfirmed = true,
+                IsActive = true
+            };
+            user.GrantAll();
             await userManager.CreateAsync(user, AdminPassword);
         }
     }
@@ -69,4 +77,25 @@ public class IntegrationTestFixture : IAsyncLifetime
     {
         AllowAutoRedirect = false
     });
+
+    public async Task<Dictionary<string, string>> GetLoginFormFieldsAsync(HttpClient client)
+    {
+        var response = await client.GetAsync("/account/login");
+        var html = await response.Content.ReadAsStringAsync();
+
+        var fields = new Dictionary<string, string>();
+        var matches = Regex.Matches(html, @"<input\s[^>]*type=[""']hidden[""'][^>]*/?>", RegexOptions.IgnoreCase);
+
+        foreach (Match match in matches)
+        {
+            var name = Regex.Match(match.Value, @"name=[""']([^""']+)[""']").Groups[1].Value;
+            var value = Regex.Match(match.Value, @"value=[""']([^""']*)[""']").Groups[1].Value;
+            if (!string.IsNullOrEmpty(name))
+            {
+                fields[name] = value;
+            }
+        }
+
+        return fields;
+    }
 }

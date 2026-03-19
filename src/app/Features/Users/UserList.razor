@@ -1,0 +1,329 @@
+@page "/users"
+@using AbbaFleet.Infrastructure
+@using AbbaFleet.Infrastructure.Data
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@attribute [Authorize]
+@inject UserManager<ApplicationUser> UserManager
+@inject IPermissionService PermissionService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject AuthenticationStateProvider AuthStateProvider
+
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<PageTitle>Users — ABBA Fleet</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4">Users</MudText>
+
+<MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-4">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenAddDialog">Add User</MudButton>
+</MudStack>
+
+<MudTable Items="_users" Hover="true" Striped="true" Loading="_loading">
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh>Email</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Last Login</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.FullName</MudTd>
+        <MudTd>@context.Email</MudTd>
+        <MudTd>
+            <MudChip T="string" Color="@(context.IsActive ? Color.Success : Color.Default)" Size="Size.Small">
+                @(context.IsActive ? "Active" : "Inactive")
+            </MudChip>
+        </MudTd>
+        <MudTd>@(context.LastLoginAt?.ToLocalTime().ToString("dd MMM yyyy, HH:mm") ?? "Never")</MudTd>
+        <MudTd>
+            <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                               OnClick="() => OpenEditDialog(context)" />
+                @if (context.IsActive)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.PersonOff" Size="Size.Small" Color="Color.Warning"
+                                   OnClick="() => ToggleActive(context)" />
+                }
+                else
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Small" Color="Color.Success"
+                                   OnClick="() => ToggleActive(context)" />
+                }
+                @if (context.LastLoginAt is null)
+                {
+                    @if (_confirmDeleteId == context.Id)
+                    {
+                        <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Filled"
+                                   OnClick="() => ConfirmDelete(context)">Delete</MudButton>
+                        <MudButton Size="Size.Small" OnClick="CancelDelete">Cancel</MudButton>
+                    }
+                    else
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                       OnClick="() => _confirmDeleteId = context.Id" />
+                    }
+                }
+            </MudStack>
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+<MudDialog @bind-Visible="_dialogVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_editingUser is null ? "Add User" : "Edit User")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_form.FullName" Label="Full Name" Required="true" />
+            <MudTextField @bind-Value="_form.Email" Label="Email" InputType="InputType.Email"
+                          Required="true" ReadOnly="@(_editingUser is not null)" />
+            @if (_editingUser is null)
+            {
+                <MudTextField @bind-Value="_form.Password" Label="Password" InputType="InputType.Password" Required="true" />
+            }
+            else
+            {
+                <MudCheckBox @bind-Value="_form.ResetPassword" Label="Reset password" />
+                @if (_form.ResetPassword)
+                {
+                    <MudTextField @bind-Value="_form.Password" Label="New Password" InputType="InputType.Password" Required="true" />
+                }
+                <MudCheckBox @bind-Value="_form.IsActive" Label="Active" />
+            }
+
+            <MudText Typo="Typo.subtitle2" Class="mt-2">Permissions</MudText>
+            <MudGrid Spacing="1">
+                <MudItem xs="12"><MudText Typo="Typo.caption" Color="Color.Secondary">Operations</MudText></MudItem>
+                @RenderPermissionCheckbox(Permission.DashboardAccess, "Dashboard Access")
+                @RenderPermissionCheckbox(Permission.SubmitTrips, "Submit Trips")
+                @RenderPermissionCheckbox(Permission.VerifyTrips, "Verify Trips")
+                @RenderPermissionCheckbox(Permission.SubmitExpenses, "Submit Expenses")
+
+                <MudItem xs="12"><MudText Typo="Typo.caption" Color="Color.Secondary">Finance</MudText></MudItem>
+                @RenderPermissionCheckbox(Permission.AccessReports, "Access Reports")
+                @RenderPermissionCheckbox(Permission.ReconcilePayments, "Reconcile Payments")
+                @RenderPermissionCheckbox(Permission.UploadRemittanceProof, "Upload Remittance Proof")
+                @RenderPermissionCheckbox(Permission.ManageWithdrawals, "Manage Withdrawals")
+
+                <MudItem xs="12"><MudText Typo="Typo.caption" Color="Color.Secondary">Data</MudText></MudItem>
+                @RenderPermissionCheckbox(Permission.ManageTrucks, "Manage Trucks")
+                @RenderPermissionCheckbox(Permission.ManageDrivers, "Manage Drivers")
+                @RenderPermissionCheckbox(Permission.ManageCompanies, "Manage Companies")
+                @RenderPermissionCheckbox(Permission.ManageCodes, "Manage Pickup/Destination Codes")
+
+                <MudItem xs="12"><MudText Typo="Typo.caption" Color="Color.Secondary">System</MudText></MudItem>
+                @RenderPermissionCheckbox(Permission.ViewFileRepository, "View File Repository")
+                @RenderPermissionCheckbox(Permission.ManageUsers, "Manage Users",
+                    disabled: _editingUser?.Id == _currentUserId)
+            </MudGrid>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveUser">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<ApplicationUser> _users = [];
+    private bool _loading = true;
+    private bool _dialogVisible;
+    private ApplicationUser? _editingUser;
+    private string? _currentUserId;
+    private string? _confirmDeleteId;
+    private UserForm _form = new();
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        CloseOnEscapeKey = true
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await PermissionService.HasAsync(Permission.ManageUsers))
+        {
+            NavigationManager.NavigateTo(AppRoutes.Dashboard);
+            return;
+        }
+
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        _currentUserId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        _loading = true;
+        _users = await UserManager.Users.OrderBy(u => u.FullName).ToListAsync<ApplicationUser>();
+        _loading = false;
+    }
+
+    private void OpenAddDialog()
+    {
+        _editingUser = null;
+        _form = new UserForm { IsActive = true };
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(ApplicationUser user)
+    {
+        _editingUser = user;
+        _form = new UserForm
+        {
+            FullName = user.FullName,
+            Email = user.Email ?? string.Empty,
+            IsActive = user.IsActive,
+            SelectedPermissions = user.Permissions.ToHashSet()
+        };
+        _dialogVisible = true;
+    }
+
+    private void CloseDialog() => _dialogVisible = false;
+
+    private async Task SaveUser()
+    {
+        if (_editingUser is null)
+        {
+            await CreateUser();
+        }
+        else
+        {
+            await UpdateUser();
+        }
+    }
+
+    private async Task CreateUser()
+    {
+        if (string.IsNullOrWhiteSpace(_form.FullName) || string.IsNullOrWhiteSpace(_form.Email))
+        {
+            Snackbar.Add("Name and email are required.", Severity.Warning);
+            return;
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = _form.Email,
+            Email = _form.Email,
+            FullName = _form.FullName,
+            EmailConfirmed = true,
+            IsActive = true
+        };
+        user.SetPermissions(_form.SelectedPermissions);
+
+        var result = await UserManager.CreateAsync(user, _form.Password);
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(string.Join(", ", result.Errors.Select(e => e.Description)), Severity.Error);
+            return;
+        }
+
+        Snackbar.Add($"{user.FullName} added.", Severity.Success);
+        CloseDialog();
+        await LoadUsers();
+    }
+
+    private async Task UpdateUser()
+    {
+        if (string.IsNullOrWhiteSpace(_form.FullName))
+        {
+            Snackbar.Add("Name is required.", Severity.Warning);
+            return;
+        }
+
+        _editingUser!.FullName = _form.FullName;
+        _editingUser.IsActive = _form.IsActive;
+
+        // Protect: cannot remove own ManageUsers permission
+        var effectivePermissions = _form.SelectedPermissions.ToHashSet();
+        if (_editingUser.Id == _currentUserId)
+            effectivePermissions.Add(Permission.ManageUsers);
+        _editingUser.SetPermissions(effectivePermissions);
+
+        if (_form.ResetPassword && !string.IsNullOrEmpty(_form.Password))
+        {
+            var token = await UserManager.GeneratePasswordResetTokenAsync(_editingUser);
+            var resetResult = await UserManager.ResetPasswordAsync(_editingUser, token, _form.Password);
+            if (!resetResult.Succeeded)
+            {
+                Snackbar.Add(string.Join(", ", resetResult.Errors.Select(e => e.Description)), Severity.Error);
+                return;
+            }
+        }
+
+        var result = await UserManager.UpdateAsync(_editingUser);
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(string.Join(", ", result.Errors.Select(e => e.Description)), Severity.Error);
+            return;
+        }
+
+        Snackbar.Add($"{_editingUser.FullName} updated.", Severity.Success);
+        CloseDialog();
+        await LoadUsers();
+    }
+
+    private async Task ToggleActive(ApplicationUser user)
+    {
+        if (user.IsActive)
+        {
+            // Block if this is the last active admin
+            var activeAdmins = _users.Count(u => u.IsActive && u.HasPermission(Permission.ManageUsers));
+            if (activeAdmins <= 1 && user.HasPermission(Permission.ManageUsers))
+            {
+                Snackbar.Add("Cannot deactivate the last admin with Manage Users permission.", Severity.Error);
+                return;
+            }
+        }
+
+        user.IsActive = !user.IsActive;
+        await UserManager.UpdateAsync(user);
+        Snackbar.Add($"{user.FullName} {(user.IsActive ? "reactivated" : "deactivated")}.", Severity.Success);
+        await LoadUsers();
+    }
+
+    private void CancelDelete() => _confirmDeleteId = null;
+
+    private async Task ConfirmDelete(ApplicationUser user)
+    {
+        _confirmDeleteId = null;
+        await UserManager.DeleteAsync(user);
+        Snackbar.Add($"{user.FullName} deleted.", Severity.Success);
+        await LoadUsers();
+    }
+
+    private RenderFragment RenderPermissionCheckbox(Permission p, string label, bool disabled = false) =>
+        @<MudItem xs="12" sm="6">
+            <MudCheckBox Value="@_form.SelectedPermissions.Contains(p)"
+                         ValueChanged="@((bool v) => TogglePermission(p, v))"
+                         Label="@label"
+                         Disabled="@disabled" />
+        </MudItem>;
+
+    private void TogglePermission(Permission p, bool value)
+    {
+        if (value)
+        {
+            _form.SelectedPermissions.Add(p);
+        }
+        else
+        {
+            _form.SelectedPermissions.Remove(p);
+        }
+    }
+
+    private sealed class UserForm
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public bool ResetPassword { get; set; }
+        public bool IsActive { get; set; } = true;
+        public HashSet<Permission> SelectedPermissions { get; set; } = [];
+    }
+}

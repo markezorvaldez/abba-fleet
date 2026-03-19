@@ -1,12 +1,15 @@
 @inherits LayoutComponentBase
 
-<div class="page">
-    <div class="sidebar">
+<MudThemeProvider />
+<MudPopoverProvider />
+
+<MudLayout>
+    <MudDrawer Open="true" Variant="DrawerVariant.Persistent" Elevation="1">
         <NavMenu />
-    </div>
-    <main>
-        <div class="content">
+    </MudDrawer>
+    <MudMainContent>
+        <div class="content pa-6">
             @Body
         </div>
-    </main>
-</div>
+    </MudMainContent>
+</MudLayout>

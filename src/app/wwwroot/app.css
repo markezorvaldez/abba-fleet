@@ -1,1 +1,20 @@
-/* Styles will be added as needed */
+.content {
+    padding: 24px;
+}
+
+.login-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid rgba(0, 0, 0, 0.42) !important;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-family: inherit;
+    box-sizing: border-box;
+    background-color: rgba(0, 0, 0, 0.04);
+    outline: none;
+    color: inherit;
+}
+
+.login-input:focus {
+    border-color: var(--mud-palette-primary) !important;
+}

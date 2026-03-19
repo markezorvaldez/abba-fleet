@@ -1,10 +1,12 @@
 using AbbaFleet;
 using AbbaFleet.Infrastructure;
 using AbbaFleet.Infrastructure.Data;
+using Lamar.Microsoft.DependencyInjection;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using MudBlazor.Services;
 using Serilog;
 using Serilog.Formatting.Compact;
 
@@ -15,7 +17,7 @@ var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 if (!string.IsNullOrEmpty(databaseUrl))
 {
     var uri = new Uri(databaseUrl);
-    var userInfo = uri.UserInfo.Split(':');
+    var userInfo = uri.UserInfo.Split(':', 2);
     var connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
     builder.Configuration["ConnectionStrings:DefaultConnection"] = connectionString;
 }
@@ -58,7 +60,18 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddDataProtection()
     .PersistKeysToDbContext<AppDbContext>();
 
+builder.Services.AddMudServices();
 builder.Services.AddHostedService<MigrationHostedService>();
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+
+builder.Host.UseLamar(registry =>
+{
+    registry.Scan(scan =>
+    {
+        scan.TheCallingAssembly();
+        scan.WithDefaultConventions();
+    });
+});
 
 var app = builder.Build();
 

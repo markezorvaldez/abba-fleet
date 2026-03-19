@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text.RegularExpressions;
 using AbbaFleet.IntegrationTests.Fixtures;
 using Xunit;
 
@@ -30,7 +29,7 @@ public class LoginIntegrationTests(IntegrationTestFixture fixture)
     [Fact]
     public async Task Login_WithValidCredentials_RedirectsToDashboard()
     {
-        var formData = await GetFormFieldsFromLoginPage();
+        var formData = await fixture.GetLoginFormFieldsAsync(_client);
         formData["Input.Email"] = IntegrationTestFixture.AdminEmail;
         formData["Input.Password"] = IntegrationTestFixture.AdminPassword;
 
@@ -43,7 +42,7 @@ public class LoginIntegrationTests(IntegrationTestFixture fixture)
     [Fact]
     public async Task Login_WithInvalidCredentials_ReturnsLoginPageWithError()
     {
-        var formData = await GetFormFieldsFromLoginPage();
+        var formData = await fixture.GetLoginFormFieldsAsync(_client);
         formData["Input.Email"] = IntegrationTestFixture.AdminEmail;
         formData["Input.Password"] = "WrongPassword!";
 
@@ -52,26 +51,5 @@ public class LoginIntegrationTests(IntegrationTestFixture fixture)
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Invalid email or password", html);
-    }
-
-    private async Task<Dictionary<string, string>> GetFormFieldsFromLoginPage()
-    {
-        var response = await _client.GetAsync("/account/login");
-        var html = await response.Content.ReadAsStringAsync();
-
-        var fields = new Dictionary<string, string>();
-        var matches = Regex.Matches(html, @"<input\s[^>]*type=[""']hidden[""'][^>]*/?>", RegexOptions.IgnoreCase);
-
-        foreach (Match match in matches)
-        {
-            var name = Regex.Match(match.Value, @"name=[""']([^""']+)[""']").Groups[1].Value;
-            var value = Regex.Match(match.Value, @"value=[""']([^""']*)[""']").Groups[1].Value;
-            if (!string.IsNullOrEmpty(name))
-            {
-                fields[name] = value;
-            }
-        }
-
-        return fields;
     }
 }

@@ -22,23 +22,39 @@ public class MigrationHostedService(IServiceProvider serviceProvider, IConfigura
         }
 
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-        var seedEmail = configuration["Seed:AdminEmail"];
-        var seedPassword = configuration["Seed:AdminPassword"];
 
-        if (seedEmail != null && seedPassword != null)
+        if (await userManager.Users.AnyAsync(stoppingToken))
         {
-            var existing = await userManager.FindByEmailAsync(seedEmail);
-            if (existing == null)
-            {
-                var user = new ApplicationUser
-                {
-                    UserName = seedEmail,
-                    Email = seedEmail,
-                    FullName = "Admin",
-                    EmailConfirmed = true
-                };
-                await userManager.CreateAsync(user, seedPassword);
-            }
+            return;
+        }
+
+        var seedEmail = configuration["SEED_ADMIN_EMAIL"];
+        var seedPassword = configuration["SEED_ADMIN_PASSWORD"];
+
+        if (seedEmail is null || seedPassword is null)
+        {
+            logger.LogWarning("No users exist and SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD are not set — skipping seed");
+            return;
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = seedEmail,
+            Email = seedEmail,
+            FullName = "Admin",
+            EmailConfirmed = true,
+            IsActive = true
+        };
+        user.GrantAll();
+
+        var result = await userManager.CreateAsync(user, seedPassword);
+        if (result.Succeeded)
+        {
+            logger.LogInformation("Seed admin account created: {Email}", seedEmail);
+        }
+        else
+        {
+            logger.LogError("Failed to create seed admin: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
         }
     }
 }

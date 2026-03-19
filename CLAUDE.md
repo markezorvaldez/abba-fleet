@@ -4,13 +4,7 @@
 ```
 docker compose up --build
 ```
-Always use `--build` — source files are copied into the image at build time, so without it the container runs stale code. Remind the user to run `docker compose up --build` after every set of code changes.
-
-## Verifying the build
-```
-docker compose build
-```
-Always run this after code changes and confirm `Build succeeded. 0 Error(s)` before presenting results.
+Always use `--build` — source files are copied into the image at build time. After any code change, run `docker compose build` and confirm `Build succeeded. 0 Error(s)` before presenting results.
 
 ## Project structure
 ```
@@ -50,12 +44,30 @@ If a PR is already open and further changes are made, update the PR description 
 
 ### Testing after code changes
 
-After implementing any code changes, always test before considering the work done. Use judgement on the appropriate level:
+After implementing any code changes, always write and run the appropriate tests before considering the work done:
 
-- **Build verification** — always run `docker compose build` and confirm no errors
-- **Unit tests** — for business logic, calculations, and validations; run with `dotnet test`
-- **Playwright** — for any UI changes, use the Playwright MCP tools to verify the affected flows work correctly in the browser. Save screenshots to `C:/Repositories/screenshots/abba-fleet/<TICKET-ID>/` (e.g. `01-login-page.png`, `02-dashboard.png`)
-- **Integration** — for behaviour that touches the database or auth, verify end-to-end in the running app
+- **Unit tests** (`tests/AbbaFleet.UnitTests/`) — domain logic and pure business rules. Add when introducing new domain methods. Mirror the source folder structure. Run with `dotnet test tests/AbbaFleet.UnitTests`.
+- **Integration tests** (`tests/AbbaFleet.IntegrationTests/`) — HTTP, auth, and DB connectivity. Test wiring, not every rule. Only add when there is meaningful connectivity to verify. Run with `dotnet test tests/AbbaFleet.IntegrationTests`.
+- **Playwright** — for UI changes, verify affected flows in the browser. Save screenshots to `C:/Repositories/screenshots/abba-fleet/<TICKET-ID>/`.
+
+Run the full suite with `dotnet test`.
+
+### EditorConfig compliance
+
+All C# code must follow `.editorconfig`. Key rules to always apply:
+- **Braces required** (`csharp_prefer_braces = true:warning`, `IDE0011`) — every `if`, `else if`, and `else` body must use `{ }`, including single-line guard clauses and early returns
+- **`var` everywhere** — use `var` for all local variable declarations
+- **File-scoped namespaces** — `namespace Foo;` not `namespace Foo { }`
+
+After writing or editing any C# file (including test files), always run:
+```
+dotnet format abba-fleet.sln --verify-no-changes
+```
+Fix any reported violations before committing. The CI format check will fail on the same issues.
+
+### Proactive tech debt
+
+When implementing a feature, always include a brief "Known shortcuts / tech debt" note in the plan if any validation, security, or concurrency gaps are knowingly deferred. Don't wait to be asked — surface these during planning.
 
 ## Constraints
 - **Host SDK:** Host machine has .NET 9 — `dotnet ef` cannot run on the host. Use the `/new-migration` skill instead.
