@@ -1,4 +1,6 @@
 using AbbaFleet;
+using AbbaFleet.Features.Auth;
+using AbbaFleet.Features.Users;
 using AbbaFleet.Infrastructure;
 using AbbaFleet.Infrastructure.Data;
 using Lamar.Microsoft.DependencyInjection;
@@ -70,6 +72,8 @@ builder.Services.AddDataProtection()
 builder.Services.AddMudServices();
 builder.Services.AddHostedService<MigrationHostedService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 builder.Host.UseLamar(registry =>
 {
