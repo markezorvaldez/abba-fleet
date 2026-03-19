@@ -4,6 +4,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <!-- Disable pre-compressed static assets in development so dotnet watch always serves live files -->
+    <StaticWebAssetsCompressionFormats></StaticWebAssetsCompressionFormats>
+  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Lamar.Microsoft.DependencyInjection" Version="15.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.0" />
