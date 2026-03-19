@@ -1,7 +1,22 @@
-<nav>
-    <div class="nav-brand">ABBA Fleet</div>
-    <ul>
-        <li><NavLink href="/" Match="NavLinkMatch.All">Dashboard</NavLink></li>
-    </ul>
-    <a href="/account/logout">Log out</a>
-</nav>
+@using AbbaFleet.Infrastructure
+@inject IPermissionService PermissionService
+
+<MudNavMenu Class="pa-2" Style="height: 100%;">
+    <MudText Typo="Typo.h6" Class="pa-4" Style="color: white;">ABBA Fleet</MudText>
+    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+    @if (_canManageUsers)
+    {
+        <MudNavLink Href="/users" Icon="@Icons.Material.Filled.People">Users</MudNavLink>
+    }
+    <MudDivider />
+    <MudNavLink Href="/account/logout" Icon="@Icons.Material.Filled.Logout">Log out</MudNavLink>
+</MudNavMenu>
+
+@code {
+    private bool _canManageUsers;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _canManageUsers = await PermissionService.HasAsync(Permission.ManageUsers);
+    }
+}

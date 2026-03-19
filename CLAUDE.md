@@ -50,12 +50,25 @@ If a PR is already open and further changes are made, update the PR description 
 
 ### Testing after code changes
 
-After implementing any code changes, always test before considering the work done. Use judgement on the appropriate level:
+After implementing any code changes, always write and run the appropriate tests before considering the work done:
 
 - **Build verification** — always run `docker compose build` and confirm no errors
-- **Unit tests** — for business logic, calculations, and validations; run with `dotnet test`
+- **Unit tests** (`tests/AbbaFleet.UnitTests/`) — for domain logic and pure business rules with no external dependencies. Always add when introducing new domain methods or business rules. Mirror the source folder structure (e.g. `Domain/`, `Features/`). Run with `dotnet test tests/AbbaFleet.UnitTests`.
+- **Integration tests** (`tests/AbbaFleet.IntegrationTests/`) — for HTTP, auth, and database connectivity. Test that the wiring works — not every business rule. Only add when there is meaningful connectivity to verify (e.g. a new auth flow, a new endpoint). Run with `dotnet test tests/AbbaFleet.IntegrationTests`.
 - **Playwright** — for any UI changes, use the Playwright MCP tools to verify the affected flows work correctly in the browser. Save screenshots to `C:/Repositories/screenshots/abba-fleet/<TICKET-ID>/` (e.g. `01-login-page.png`, `02-dashboard.png`)
-- **Integration** — for behaviour that touches the database or auth, verify end-to-end in the running app
+
+Run the full suite with `dotnet test`.
+
+### EditorConfig compliance
+
+All C# code must follow `.editorconfig`. Key rules to always apply:
+- **Braces required** (`csharp_prefer_braces = true:warning`, `IDE0011`) — every `if`, `else if`, and `else` body must use `{ }`, including single-line guard clauses and early returns
+- **`var` everywhere** — use `var` for all local variable declarations
+- **File-scoped namespaces** — `namespace Foo;` not `namespace Foo { }`
+
+### Proactive tech debt
+
+When implementing a feature, always include a brief "Known shortcuts / tech debt" note in the plan if any validation, security, or concurrency gaps are knowingly deferred. Don't wait to be asked — surface these during planning.
 
 ## Constraints
 - **Host SDK:** Host machine has .NET 9 — `dotnet ef` cannot run on the host. Use the `/new-migration` skill instead.
