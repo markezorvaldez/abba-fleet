@@ -9,4 +9,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>, IDataProtectionK
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder builder)
+    {
+        base.OnModelCreating(builder);
+        builder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+    }
 }
