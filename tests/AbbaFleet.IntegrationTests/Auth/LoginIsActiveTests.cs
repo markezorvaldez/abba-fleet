@@ -50,7 +50,10 @@ public class LoginIsActiveTests(IntegrationTestFixture fixture)
     {
         using var scope = fixture.Factory.Services.CreateScope();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-        if (await userManager.FindByEmailAsync(email) is not null) return;
+        if (await userManager.FindByEmailAsync(email) is not null)
+        {
+            return;
+        }
         var user = new ApplicationUser
         {
             UserName = email,
