@@ -66,6 +66,12 @@ All C# code must follow `.editorconfig`. Key rules to always apply:
 - **`var` everywhere** — use `var` for all local variable declarations
 - **File-scoped namespaces** — `namespace Foo;` not `namespace Foo { }`
 
+After writing or editing any C# file (including test files), always run:
+```
+dotnet format abba-fleet.sln --verify-no-changes
+```
+Fix any reported violations before committing. The CI format check will fail on the same issues.
+
 ### Proactive tech debt
 
 When implementing a feature, always include a brief "Known shortcuts / tech debt" note in the plan if any validation, security, or concurrency gaps are knowingly deferred. Don't wait to be asked — surface these during planning.
