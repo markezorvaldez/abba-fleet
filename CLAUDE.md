@@ -4,13 +4,7 @@
 ```
 docker compose up --build
 ```
-Always use `--build` — source files are copied into the image at build time, so without it the container runs stale code. Remind the user to run `docker compose up --build` after every set of code changes.
-
-## Verifying the build
-```
-docker compose build
-```
-Always run this after code changes and confirm `Build succeeded. 0 Error(s)` before presenting results.
+Always use `--build` — source files are copied into the image at build time. After any code change, run `docker compose build` and confirm `Build succeeded. 0 Error(s)` before presenting results.
 
 ## Project structure
 ```
@@ -52,10 +46,9 @@ If a PR is already open and further changes are made, update the PR description 
 
 After implementing any code changes, always write and run the appropriate tests before considering the work done:
 
-- **Build verification** — always run `docker compose build` and confirm no errors
-- **Unit tests** (`tests/AbbaFleet.UnitTests/`) — for domain logic and pure business rules with no external dependencies. Always add when introducing new domain methods or business rules. Mirror the source folder structure (e.g. `Domain/`, `Features/`). Run with `dotnet test tests/AbbaFleet.UnitTests`.
-- **Integration tests** (`tests/AbbaFleet.IntegrationTests/`) — for HTTP, auth, and database connectivity. Test that the wiring works — not every business rule. Only add when there is meaningful connectivity to verify (e.g. a new auth flow, a new endpoint). Run with `dotnet test tests/AbbaFleet.IntegrationTests`.
-- **Playwright** — for any UI changes, use the Playwright MCP tools to verify the affected flows work correctly in the browser. Save screenshots to `C:/Repositories/screenshots/abba-fleet/<TICKET-ID>/` (e.g. `01-login-page.png`, `02-dashboard.png`)
+- **Unit tests** (`tests/AbbaFleet.UnitTests/`) — domain logic and pure business rules. Add when introducing new domain methods. Mirror the source folder structure. Run with `dotnet test tests/AbbaFleet.UnitTests`.
+- **Integration tests** (`tests/AbbaFleet.IntegrationTests/`) — HTTP, auth, and DB connectivity. Test wiring, not every rule. Only add when there is meaningful connectivity to verify. Run with `dotnet test tests/AbbaFleet.IntegrationTests`.
+- **Playwright** — for UI changes, verify affected flows in the browser. Save screenshots to `C:/Repositories/screenshots/abba-fleet/<TICKET-ID>/`.
 
 Run the full suite with `dotnet test`.
 
