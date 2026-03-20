@@ -31,6 +31,18 @@ jobs:
       - run: dotnet restore abba-fleet.sln
       - run: dotnet test tests/AbbaFleet.Unit.Tests --no-restore --verbosity normal
 
+  test-architectural:
+    name: Architectural Tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet restore abba-fleet.sln
+      - run: dotnet test tests/AbbaFleet.Architectural.Tests --no-restore --verbosity normal
+
   test-integration:
     name: Integration Tests
     runs-on: ubuntu-latest
