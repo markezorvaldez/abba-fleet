@@ -1,8 +1,8 @@
 using System.Net;
 using System.Security.Claims;
-using AbbaFleet.Infrastructure;
 using AbbaFleet.Infrastructure.Data;
 using AbbaFleet.Integration.Tests.Fixtures;
+using AbbaFleet.Shared;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;

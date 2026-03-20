@@ -1,4 +1,4 @@
-using AbbaFleet.Infrastructure;
+using AbbaFleet.Shared;
 
 namespace AbbaFleet.Features.Users;
 

@@ -1,4 +1,4 @@
-namespace AbbaFleet.Infrastructure;
+namespace AbbaFleet.Shared;
 
 public static class PermissionClaimTypes
 {

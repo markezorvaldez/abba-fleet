@@ -3,6 +3,7 @@ using AbbaFleet.Features.Auth;
 using AbbaFleet.Features.Users;
 using AbbaFleet.Infrastructure;
 using AbbaFleet.Infrastructure.Data;
+using AbbaFleet.Shared;
 using Lamar.Microsoft.DependencyInjection;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;

@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using AbbaFleet.Features.Users;
-using AbbaFleet.Infrastructure;
 using AbbaFleet.Infrastructure.Data;
+using AbbaFleet.Shared;
 using Microsoft.AspNetCore.Identity;
 using NSubstitute;
 using Xunit;

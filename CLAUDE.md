@@ -10,17 +10,26 @@ Always use `--build` — source files are copied into the image at build time. A
 ```
 src/app/                   — single Blazor Server project (.NET 10)
   Features/                — one folder per feature (vertical slice)
-  Infrastructure/          — cross-cutting concerns (DbContext, Identity, migrations)
+  Shared/                  — types shared across all layers (Permission, AppRoutes, service interfaces)
+  Infrastructure/          — implementations wired to framework concerns (DbContext, Identity, migrations)
   Components/Layout/       — shared layout components
+tests/
+  AbbaFleet.Unit.Tests/           — domain logic and business rule tests
+  AbbaFleet.Integration.Tests/    — HTTP, auth, and DB connectivity tests
+  AbbaFleet.Architectural.Tests/  — ArchUnitNET layer enforcement tests
 docs/adr/                  — Architecture Decision Records
 ```
-
-Note: `Infrastructure/` is not present in the initial scaffold — it is added as features require it.
 
 ## Conventions
 
 ### Vertical slice
-Each feature lives in `Features/FeatureName/`. Don't scatter feature code into shared folders — only truly cross-cutting concerns belong in `Infrastructure/` or `Components/`.
+Each feature lives in `Features/FeatureName/`. Don't scatter feature code into shared folders — only truly cross-cutting types belong in `Shared/`, and only framework-coupled implementations belong in `Infrastructure/`.
+
+### Layer boundaries (enforced by ArchUnitNET)
+- Features must not reference other features
+- Components must not reference Features or Infrastructure (use Shared instead)
+- Infrastructure must not reference Features
+- Razor components must not reference DbContext or EF Core directly
 
 ### ADRs
 When a significant architectural or technology decision is made, write an ADR in `docs/adr/` using the next available number. Capture the decision, the alternatives considered, and the reason.
@@ -48,6 +57,7 @@ After implementing any code changes, always write and run the appropriate tests 
 
 - **Unit tests** (`tests/AbbaFleet.Unit.Tests/`) — domain logic and pure business rules. Add when introducing new domain methods. Mirror the source folder structure. Run with `dotnet test tests/AbbaFleet.Unit.Tests`.
 - **Integration tests** (`tests/AbbaFleet.Integration.Tests/`) — HTTP, auth, and DB connectivity. Test wiring, not every rule. Only add when there is meaningful connectivity to verify. Run with `dotnet test tests/AbbaFleet.Integration.Tests`.
+- **Architectural tests** (`tests/AbbaFleet.Architectural.Tests/`) — ArchUnitNET layer enforcement. Run with `dotnet test tests/AbbaFleet.Architectural.Tests`. Add rules when new layer boundaries are introduced.
 - **Playwright** — for UI changes, verify affected flows in the browser. Save screenshots to `C:/Repositories/screenshots/abba-fleet/<TICKET-ID>/`.
 
 Run the full suite with `dotnet test`.

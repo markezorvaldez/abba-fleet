@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.RegularExpressions;
 using AbbaFleet.Infrastructure;
 using AbbaFleet.Infrastructure.Data;
+using AbbaFleet.Shared;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
