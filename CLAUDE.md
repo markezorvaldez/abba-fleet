@@ -4,7 +4,6 @@
 ```
 docker compose up --build
 ```
-Always use `--build` — source files are copied into the image at build time. After any code change, run `docker compose build` and confirm `Build succeeded. 0 Error(s)` before presenting results.
 
 ## Project structure
 ```
@@ -40,7 +39,7 @@ Branch naming: `feature/mar-XX-short-description`
 ### Commits
 Short imperative subject line, with the Linear ticket referenced naturally in the description. Always add the co-author trailer:
 ```
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 ### Committing changes
@@ -64,21 +63,8 @@ Run the full suite with `dotnet test`.
 
 ### EditorConfig compliance
 
-All C# code must follow `.editorconfig`. Key rules to always apply:
-- **Braces required** (`csharp_prefer_braces = true:warning`, `IDE0011`) — every `if`, `else if`, and `else` body must use `{ }`, including single-line guard clauses and early returns
-- **`var` everywhere** — use `var` for all local variable declarations
-- **File-scoped namespaces** — `namespace Foo;` not `namespace Foo { }`
-
-After writing or editing any C# file (including test files), always run:
-```
-dotnet format abba-fleet.sln --verify-no-changes
-```
-Fix any reported violations before committing. The CI format check will fail on the same issues.
+After writing or editing any C# file, run `dotnet format abba-fleet.sln --verify-no-changes` and fix violations before committing.
 
 ### Proactive tech debt
 
 When implementing a feature, always include a brief "Known shortcuts / tech debt" note in the plan if any validation, security, or concurrency gaps are knowingly deferred. Don't wait to be asked — surface these during planning.
-
-## Constraints
-- **Host SDK:** Host machine has .NET 9 — `dotnet ef` cannot run on the host. Use the `/new-migration` skill instead.
-- **File deletion:** `rm -rf` is denied in user settings — ask the user to manually delete folders when needed.
