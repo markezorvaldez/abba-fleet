@@ -46,8 +46,8 @@ If a PR is already open and further changes are made, update the PR description 
 
 After implementing any code changes, always write and run the appropriate tests before considering the work done:
 
-- **Unit tests** (`tests/AbbaFleet.UnitTests/`) — domain logic and pure business rules. Add when introducing new domain methods. Mirror the source folder structure. Run with `dotnet test tests/AbbaFleet.UnitTests`.
-- **Integration tests** (`tests/AbbaFleet.IntegrationTests/`) — HTTP, auth, and DB connectivity. Test wiring, not every rule. Only add when there is meaningful connectivity to verify. Run with `dotnet test tests/AbbaFleet.IntegrationTests`.
+- **Unit tests** (`tests/AbbaFleet.Unit.Tests/`) — domain logic and pure business rules. Add when introducing new domain methods. Mirror the source folder structure. Run with `dotnet test tests/AbbaFleet.Unit.Tests`.
+- **Integration tests** (`tests/AbbaFleet.Integration.Tests/`) — HTTP, auth, and DB connectivity. Test wiring, not every rule. Only add when there is meaningful connectivity to verify. Run with `dotnet test tests/AbbaFleet.Integration.Tests`.
 - **Playwright** — for UI changes, verify affected flows in the browser. Save screenshots to `C:/Repositories/screenshots/abba-fleet/<TICKET-ID>/`.
 
 Run the full suite with `dotnet test`.
