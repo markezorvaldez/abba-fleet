@@ -1,11 +1,11 @@
 using System.Net;
 using AbbaFleet.Infrastructure.Data;
-using AbbaFleet.IntegrationTests.Fixtures;
+using AbbaFleet.Integration.Tests.Fixtures;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace AbbaFleet.IntegrationTests.Auth;
+namespace AbbaFleet.Integration.Tests.Auth;
 
 [Collection("Integration")]
 public class LoginIsActiveTests(IntegrationTestFixture fixture)

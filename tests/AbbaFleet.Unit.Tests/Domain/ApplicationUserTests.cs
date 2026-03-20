@@ -1,7 +1,7 @@
 using AbbaFleet.Infrastructure.Data;
 using Xunit;
 
-namespace AbbaFleet.UnitTests.Domain;
+namespace AbbaFleet.Unit.Tests.Domain;
 
 public class ApplicationUserTests
 {

@@ -1,8 +1,8 @@
 using System.Net;
-using AbbaFleet.IntegrationTests.Fixtures;
+using AbbaFleet.Integration.Tests.Fixtures;
 using Xunit;
 
-namespace AbbaFleet.IntegrationTests.Auth;
+namespace AbbaFleet.Integration.Tests.Auth;
 
 [Collection("Integration")]
 public class LoginIntegrationTests(IntegrationTestFixture fixture)

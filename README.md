@@ -13,13 +13,17 @@ Internal web-based admin platform for ABBA, a trucking company based in the Phil
 
 ```
 src/
-  app/              ← Blazor Server project
-    Features/       ← one folder per feature (vertical slice)
-    Infrastructure/ ← cross-cutting concerns (DbContext, Identity, migrations)
-    Components/     ← shared layout components
-    Pages/          ← Razor Pages (login/logout)
+  app/                            ← Blazor Server project
+    Features/                     ← one folder per feature (vertical slice)
+    Shared/                       ← types shared across all layers (Permission, AppRoutes, service interfaces)
+    Infrastructure/               ← implementations wired to framework concerns (DbContext, Identity, migrations)
+    Components/                   ← shared layout components
+tests/
+  AbbaFleet.Unit.Tests/           ← domain logic and business rule tests
+  AbbaFleet.Integration.Tests/    ← HTTP, auth, and DB connectivity tests
+  AbbaFleet.Architectural.Tests/  ← ArchUnitNET layer enforcement tests
 docs/
-  adr/              ← Architecture Decision Records
+  adr/                            ← Architecture Decision Records
 ```
 
 ## Running locally

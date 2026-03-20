@@ -1,6 +1,9 @@
 using AbbaFleet;
+using AbbaFleet.Features.Auth;
+using AbbaFleet.Features.Users;
 using AbbaFleet.Infrastructure;
 using AbbaFleet.Infrastructure.Data;
+using AbbaFleet.Shared;
 using Lamar.Microsoft.DependencyInjection;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -70,6 +73,8 @@ builder.Services.AddDataProtection()
 builder.Services.AddMudServices();
 builder.Services.AddHostedService<MigrationHostedService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 builder.Host.UseLamar(registry =>
 {

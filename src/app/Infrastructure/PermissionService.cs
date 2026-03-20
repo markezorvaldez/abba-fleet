@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AbbaFleet.Infrastructure.Data;
+using AbbaFleet.Shared;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 

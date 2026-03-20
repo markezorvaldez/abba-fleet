@@ -1,6 +1,6 @@
 using Xunit;
 
-namespace AbbaFleet.IntegrationTests.Fixtures;
+namespace AbbaFleet.Integration.Tests.Fixtures;
 
 [CollectionDefinition("Integration")]
 public class IntegrationTestCollection : ICollectionFixture<IntegrationTestFixture> { }

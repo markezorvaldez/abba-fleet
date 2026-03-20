@@ -1,10 +1,8 @@
 @page "/account/login"
 @layout LoginLayout
-@using AbbaFleet.Infrastructure
-@using AbbaFleet.Infrastructure.Data
-@using Microsoft.AspNetCore.Identity
-@inject SignInManager<ApplicationUser> SignInManager
-@inject UserManager<ApplicationUser> UserManager
+@using AbbaFleet.Shared
+@using AbbaFleet.Features.Auth
+@inject IAuthService AuthService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Login — ABBA Fleet</PageTitle>
@@ -49,27 +47,18 @@
             return;
         }
 
-        var result = await SignInManager.PasswordSignInAsync(
-            Input.Email, Input.Password, isPersistent: true, lockoutOnFailure: false);
+        var result = await AuthService.LoginAsync(Input.Email, Input.Password);
+
+        if (result.IsDeactivated)
+        {
+            ErrorMessage = "Your account has been deactivated. Please contact an administrator.";
+            return;
+        }
 
         if (!result.Succeeded)
         {
             ErrorMessage = "Invalid email or password.";
             return;
-        }
-
-        var user = await UserManager.FindByEmailAsync(Input.Email);
-        if (user is not null && !user.IsActive)
-        {
-            await SignInManager.SignOutAsync();
-            ErrorMessage = "Your account has been deactivated. Please contact an administrator.";
-            return;
-        }
-
-        if (user is not null)
-        {
-            user.LastLoginAt = DateTimeOffset.UtcNow;
-            await UserManager.UpdateAsync(user);
         }
 
         NavigationManager.NavigateTo(AppRoutes.Dashboard, forceLoad: true);

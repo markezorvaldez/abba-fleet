@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.RegularExpressions;
 using AbbaFleet.Infrastructure;
 using AbbaFleet.Infrastructure.Data;
+using AbbaFleet.Shared;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -10,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
 using Xunit;
 
-namespace AbbaFleet.IntegrationTests.Fixtures;
+namespace AbbaFleet.Integration.Tests.Fixtures;
 
 public class IntegrationTestFixture : IAsyncLifetime
 {
