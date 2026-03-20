@@ -2,12 +2,12 @@ using System.Net;
 using System.Security.Claims;
 using AbbaFleet.Infrastructure;
 using AbbaFleet.Infrastructure.Data;
-using AbbaFleet.IntegrationTests.Fixtures;
+using AbbaFleet.Integration.Tests.Fixtures;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace AbbaFleet.IntegrationTests.Users;
+namespace AbbaFleet.Integration.Tests.Users;
 
 [Collection("Integration")]
 public class UsersPageAccessTests(IntegrationTestFixture fixture)

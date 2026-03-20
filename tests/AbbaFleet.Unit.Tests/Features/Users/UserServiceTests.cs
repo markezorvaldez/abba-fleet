@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using NSubstitute;
 using Xunit;
 
-namespace AbbaFleet.UnitTests.Features.Users;
+namespace AbbaFleet.Unit.Tests.Features.Users;
 
 public class UserServiceTests
 {

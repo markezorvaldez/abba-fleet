@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
 using Xunit;
 
-namespace AbbaFleet.IntegrationTests.Fixtures;
+namespace AbbaFleet.Integration.Tests.Fixtures;
 
 public class IntegrationTestFixture : IAsyncLifetime
 {
