@@ -1,6 +1,4 @@
 using AbbaFleet;
-using AbbaFleet.Features.Auth;
-using AbbaFleet.Features.Users;
 using AbbaFleet.Infrastructure;
 using AbbaFleet.Infrastructure.Data;
 using AbbaFleet.Shared;
@@ -13,6 +11,8 @@ using MudBlazor.Services;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+var environment = builder.Environment;
+var configuration = builder.Configuration;
 
 builder.Host.UseSerilog((context, config) =>
 {
@@ -62,20 +62,20 @@ builder.Services.AddDataProtection()
 
 builder.Services.AddMudServices();
 builder.Services.AddHostedService<MigrationHostedService>();
-builder.Services.AddScoped<IPermissionService, PermissionService>();
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IAuthService, AuthService>();
 
 builder.Host.UseLamar(registry =>
 {
     registry.Scan(scan =>
     {
-        scan.TheCallingAssembly();
-        scan.WithDefaultConventions();
+        scan.AssemblyContainingType<Program>();
+        scan.WithDefaultConventions(ServiceLifetime.Scoped);
     });
 });
 
 var app = builder.Build();
+
+app.Logger.LogInformation("🚀 STARTSUCCESS: Railway Serilog configuration is working!");
+
 
 if (!app.Environment.IsDevelopment())
 {
@@ -103,8 +103,6 @@ app.MapGet("/account/logout", async (SignInManager<ApplicationUser> signInManage
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-
-app.Logger.LogInformation("🚀 STARTSUCCESS: Railway Serilog configuration is working!");
 
 await app.RunAsync();
 
