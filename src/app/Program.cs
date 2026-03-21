@@ -34,7 +34,7 @@ builder.Host.UseSerilog((context, config) =>
     }
 });
 
-builder.Services.AddDbContext<AppDbContext>(options =>
+builder.Services.AddDbContextFactory<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -69,6 +69,7 @@ builder.Host.UseLamar(registry =>
     {
         scan.AssemblyContainingType<Program>();
         scan.WithDefaultConventions(ServiceLifetime.Scoped);
+        scan.ConnectImplementationsToTypesClosing(typeof(FluentValidation.IValidator<>));
     });
 });
 

@@ -61,6 +61,11 @@ After implementing any code changes, always write and run the appropriate tests 
 
 Run the full suite with `dotnet test`.
 
+### Unit test style
+
+- **Tight mock arrange on positive tests:** Use `Arg.Is<T>(predicate)` matching expected values, not `Arg.Any<T>()`. Loose matchers are fine for negative/failure-path tests.
+- **Use AutoFixture for test data:** Use `IFixture` / `_fixture.Create<T>()` for arbitrary test values rather than hardcoding magic strings and numbers.
+
 ### EditorConfig compliance
 
 After writing or editing any C# file, run `dotnet format abba-fleet.sln --verify-no-changes` and fix violations before committing.

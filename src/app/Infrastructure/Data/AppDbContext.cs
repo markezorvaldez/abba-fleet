@@ -1,3 +1,4 @@
+using AbbaFleet.Features.Drivers;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +10,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>, IDataProtectionK
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
+    public DbSet<Driver> Drivers { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
