@@ -11,17 +11,7 @@ public class AuthService(
     {
         var result = await signInManager.PasswordSignInAsync(email, password, isPersistent: true, lockoutOnFailure: false);
 
-        if (result.IsLockedOut)
-        {
-            return new LoginResult(false, IsLockedOut: true);
-        }
-
-        if (result.IsNotAllowed)
-        {
-            return new LoginResult(false, IsNotAllowed: true);
-        }
-
-        if (!result.Succeeded)
+        if (result.IsLockedOut || result.IsNotAllowed || !result.Succeeded)
         {
             return new LoginResult(false);
         }
