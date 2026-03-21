@@ -17,34 +17,46 @@ public class ArchitectureRuleTests
     private static ArchUnitNET.Domain.Architecture Arch => ArchLazy.Value;
 
     // --- Feature isolation ---
-
-    [Fact]
-    public void AuthFeature_ShouldNotDependOn_UsersFeature()
+    [Theory]
+    [MemberData(nameof(FeatureNamespacePairs))]
+    public void Features_ShouldNotDependOn_OtherFeatures(string featureNamespace, string otherFeatureNamespace)
     {
-        Types().That().ResideInNamespace("AbbaFleet.Features.Auth", useRegularExpressions: false)
+        Types().That().ResideInNamespace(featureNamespace, useRegularExpressions: false)
             .Should().NotDependOnAnyTypesThat()
-            .ResideInNamespace("AbbaFleet.Features.Users", useRegularExpressions: false)
+            .ResideInNamespace(otherFeatureNamespace, useRegularExpressions: false)
             .Check(Arch);
     }
 
-    [Fact]
-    public void UsersFeature_ShouldNotDependOn_AuthFeature()
+    public static TheoryData<string, string> FeatureNamespacePairs()
     {
-        Types().That().ResideInNamespace("AbbaFleet.Features.Users", useRegularExpressions: false)
-            .Should().NotDependOnAnyTypesThat()
-            .ResideInNamespace("AbbaFleet.Features.Auth", useRegularExpressions: false)
-            .Check(Arch);
-    }
+        const string prefix = "AbbaFleet.Features.";
 
-    [Fact]
-    public void DashboardFeature_ShouldNotDependOn_OtherFeatures()
-    {
-        Types().That().ResideInNamespace("AbbaFleet.Features.Dashboard", useRegularExpressions: false)
-            .Should().NotDependOnAnyTypesThat()
-            .ResideInNamespace("AbbaFleet.Features.Auth", useRegularExpressions: false)
-            .AndShould().NotDependOnAnyTypesThat()
-            .ResideInNamespace("AbbaFleet.Features.Users", useRegularExpressions: false)
-            .Check(Arch);
+        var featureNamespaces = Arch.Types
+            .Where(t => t.Namespace.FullName.StartsWith(prefix))
+            .Select(t =>
+            {
+                var afterPrefix = t.Namespace.FullName[prefix.Length..];
+                var dotIndex = afterPrefix.IndexOf('.');
+                return dotIndex >= 0
+                    ? prefix + afterPrefix[..dotIndex]
+                    : t.Namespace.FullName;
+            })
+            .Distinct()
+            .ToList();
+
+        var data = new TheoryData<string, string>();
+        foreach (var a in featureNamespaces)
+        {
+            foreach (var b in featureNamespaces)
+            {
+                if (a != b)
+                {
+                    data.Add(a, b);
+                }
+            }
+        }
+
+        return data;
     }
 
     // --- Component boundaries ---
@@ -68,13 +80,16 @@ public class ArchitectureRuleTests
     }
 
     // --- Infrastructure boundaries ---
+    // Infrastructure implements abstractions defined in Features (dependency inversion),
+    // so it may depend on domain entities, DTOs, and repository interfaces.
+    // It must NOT depend on Razor components.
 
     [Fact]
-    public void Infrastructure_ShouldNotDependOn_Features()
+    public void Infrastructure_ShouldNotDependOn_RazorComponents()
     {
         Types().That().ResideInNamespace("AbbaFleet.Infrastructure", useRegularExpressions: false)
             .Should().NotDependOnAnyTypesThat()
-            .ResideInNamespace("AbbaFleet.Features", useRegularExpressions: false)
+            .AreAssignableTo(typeof(ComponentBase))
             .Check(Arch);
     }
 

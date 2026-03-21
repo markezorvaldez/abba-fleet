@@ -1,0 +1,182 @@
+@page "/drivers"
+@using AbbaFleet.Shared
+@using AbbaFleet.Features.Drivers
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IDriverService DriverService
+@inject IPermissionService PermissionService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<PageTitle>Drivers — ABBA Fleet</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4">Drivers</MudText>
+
+<MudStack Row="true" Spacing="3" AlignItems="AlignItems.End" Class="mb-4">
+    <MudTextField @bind-Value="_search" Placeholder="Search name or phone..." Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true" Class="flex-grow-1" />
+    <MudToggleGroup T="string" @bind-Value="_activeFilter" Style="flex-shrink: 0;">
+        <MudToggleItem Value="@("All")" Text="All" />
+        <MudToggleItem Value="@("Active")" Text="Active" />
+        <MudToggleItem Value="@("Inactive")" Text="Inactive" />
+    </MudToggleGroup>
+    <MudToggleGroup T="string" @bind-Value="_relieverFilter" Style="flex-shrink: 0;">
+        <MudToggleItem Value="@("All")" Text="All" />
+        <MudToggleItem Value="@("Yes")" Text="Reliever" />
+        <MudToggleItem Value="@("No")" Text="Non-reliever" />
+    </MudToggleGroup>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenAddDialog" Class="mb-1">Add Driver</MudButton>
+</MudStack>
+
+<MudTable Items="FilteredDrivers" Hover="true" Striped="true" Loading="_loading">
+    <HeaderContent>
+        <MudTh>Full Name</MudTh>
+        <MudTh>Phone Number</MudTh>
+        <MudTh>Reliever</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Date Started</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.FullName</MudTd>
+        <MudTd>@context.PhoneNumber</MudTd>
+        <MudTd>
+            <MudChip T="string" Color="@(context.IsReliever ? Color.Info : Color.Default)" Size="Size.Small">
+                @(context.IsReliever ? "Yes" : "No")
+            </MudChip>
+        </MudTd>
+        <MudTd>
+            <MudChip T="string" Color="@(context.IsActive ? Color.Success : Color.Default)" Size="Size.Small">
+                @(context.IsActive ? "Active" : "Inactive")
+            </MudChip>
+        </MudTd>
+        <MudTd>@context.DateStarted.ToString("dd MMM yyyy")</MudTd>
+    </RowTemplate>
+</MudTable>
+
+<MudDialog @bind-Visible="_dialogVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Add Driver</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_form.FullName" Label="Full Name" Required="true" Counter="100" MaxLength="100" />
+            <MudTextField @bind-Value="_form.PhoneNumber" Label="Phone Number" Required="true" Counter="100" MaxLength="100" />
+            <MudTextField @bind-Value="_form.FacebookLink" Label="Facebook Link" Counter="100" MaxLength="100" />
+            <MudTextField @bind-Value="_form.Address" Label="Address" Counter="100" MaxLength="100" />
+            <MudTextField @bind-Value="_form.DateStarted" Label="Date Started" InputType="InputType.Date" Required="true" />
+            <MudCheckBox @bind-Value="_form.IsActive" Label="Active" />
+            <MudCheckBox @bind-Value="_form.IsReliever" Label="Reliever (backup driver)" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateDriver">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<DriverSummary> _drivers = [];
+    private bool _loading = true;
+    private bool _dialogVisible;
+    private string _search = string.Empty;
+    private string _activeFilter = "All";
+    private string _relieverFilter = "All";
+    private DriverForm _form = new();
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        CloseOnEscapeKey = true
+    };
+
+    private IEnumerable<DriverSummary> FilteredDrivers => _drivers
+        .Where(d => string.IsNullOrEmpty(_search)
+            || d.FullName.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || d.PhoneNumber.Contains(_search, StringComparison.OrdinalIgnoreCase))
+        .Where(d => _activeFilter switch
+        {
+            "Active" => d.IsActive,
+            "Inactive" => !d.IsActive,
+            _ => true
+        })
+        .Where(d => _relieverFilter switch
+        {
+            "Yes" => d.IsReliever,
+            "No" => !d.IsReliever,
+            _ => true
+        });
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await PermissionService.HasAsync(Permission.ManageDrivers))
+        {
+            NavigationManager.NavigateTo(AppRoutes.Dashboard);
+            return;
+        }
+
+        await LoadDrivers();
+    }
+
+    private async Task LoadDrivers()
+    {
+        _loading = true;
+        _drivers = [.. await DriverService.GetAllAsync()];
+        _loading = false;
+    }
+
+    private void OpenAddDialog()
+    {
+        _form = new DriverForm();
+        _dialogVisible = true;
+    }
+
+    private void CloseDialog() => _dialogVisible = false;
+
+    private async Task CreateDriver()
+    {
+        if (string.IsNullOrWhiteSpace(_form.FullName) || string.IsNullOrWhiteSpace(_form.PhoneNumber))
+        {
+            Snackbar.Add("Full name and phone number are required.", Severity.Warning);
+            return;
+        }
+
+        if (!DateOnly.TryParse(_form.DateStarted, out var dateStarted))
+        {
+            Snackbar.Add("Date started is required.", Severity.Warning);
+            return;
+        }
+
+        var result = await DriverService.CreateAsync(
+            _form.FullName,
+            _form.PhoneNumber,
+            _form.FacebookLink,
+            _form.Address,
+            _form.IsReliever,
+            dateStarted);
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Failed to add driver.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add($"{_form.FullName} added.", Severity.Success);
+        CloseDialog();
+        await LoadDrivers();
+    }
+
+    private sealed class DriverForm
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string? FacebookLink { get; set; }
+        public string? Address { get; set; }
+        public bool IsActive { get; set; } = true;
+        public bool IsReliever { get; set; }
+        public string DateStarted { get; set; } = DateTime.Today.ToString("yyyy-MM-dd");
+    }
+}
