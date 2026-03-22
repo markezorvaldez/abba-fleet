@@ -1,9 +1,15 @@
+using System.Security.Claims;
 using AbbaFleet.Shared;
 using FluentValidation;
+using Microsoft.AspNetCore.Components.Authorization;
 
 namespace AbbaFleet.Features.Trucks;
 
-public class TruckService(IValidator<UpsertTruckRequest> validator, ITruckRepository repository) : ITruckService
+public class TruckService(
+    IValidator<UpsertTruckRequest> validator,
+    ITruckRepository repository,
+    IInvestmentRepository investmentRepository,
+    AuthenticationStateProvider authStateProvider) : ITruckService
 {
     public async Task<IReadOnlyList<TruckSummary>> GetAllAsync()
     {
@@ -259,6 +265,54 @@ public class TruckService(IValidator<UpsertTruckRequest> validator, ITruckReposi
         var updated = await repository.GetByIdAsync(truckId);
         return MapToDetail(updated!.Value.Truck, updated.Value.DriverName);
     }
+
+    public async Task<(IReadOnlyList<InvestmentDto> Entries, decimal Total)> GetInvestmentsAsync(Guid truckId)
+    {
+        var entries = await investmentRepository.GetByTruckIdAsync(truckId);
+        var total = await investmentRepository.GetTotalByTruckIdAsync(truckId);
+        return (entries.Select(MapToInvestmentDto).ToList(), total);
+    }
+
+    public async Task<Result<InvestmentDto>> AddInvestmentAsync(Guid truckId, AddInvestmentRequest request)
+    {
+        var truckResult = await repository.GetByIdAsync(truckId);
+
+        if (truckResult is null)
+        {
+            return "Truck not found.";
+        }
+
+        if (request.Amount <= 0)
+        {
+            return "Amount must be greater than zero.";
+        }
+
+        var userName = await GetCurrentUserNameAsync();
+
+        if (userName is null)
+        {
+            return "Unable to determine the current user.";
+        }
+
+        var entry = new InvestmentEntry(truckId, request.Type, request.Amount, request.Date, request.Description, userName);
+        await investmentRepository.AddAsync(entry);
+        return MapToInvestmentDto(entry);
+    }
+
+    private async Task<string?> GetCurrentUserNameAsync()
+    {
+        var state = await authStateProvider.GetAuthenticationStateAsync();
+        return state.User.FindFirstValue(ClaimTypes.Name);
+    }
+
+    private static InvestmentDto MapToInvestmentDto(InvestmentEntry e) => new(
+        e.Id,
+        e.Type,
+        e.Amount,
+        e.Date,
+        e.Description,
+        e.CreatedBy,
+        e.CreatedAt);
 
     private static TruckDetailDto MapToDetail(Truck t, string? driverName) => new(
         t.Id,

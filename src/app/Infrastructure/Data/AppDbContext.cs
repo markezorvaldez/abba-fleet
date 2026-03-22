@@ -16,6 +16,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>, IDataProtectionK
     public DbSet<Truck> Trucks { get; set; }
     public DbSet<Note> Notes { get; set; }
     public DbSet<AttachedFile> AttachedFiles { get; set; }
+    public DbSet<InvestmentEntry> InvestmentEntries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

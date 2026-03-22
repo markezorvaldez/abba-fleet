@@ -14,4 +14,6 @@ public interface ITruckService
     Task<Result<bool>> ReactivateAsync(Guid id, string reason);
     Task<Result<TruckDetailDto>> AssignDriverAsync(Guid truckId, Guid driverId, string reason, bool force = false);
     Task<Result<TruckDetailDto>> UnassignDriverAsync(Guid truckId, string reason);
+    Task<(IReadOnlyList<InvestmentDto> Entries, decimal Total)> GetInvestmentsAsync(Guid truckId);
+    Task<Result<InvestmentDto>> AddInvestmentAsync(Guid truckId, AddInvestmentRequest request);
 }
