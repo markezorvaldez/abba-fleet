@@ -260,4 +260,109 @@ public class TruckServiceTests
         Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
         await _repository.DidNotReceive().DeleteAsync(Arg.Any<Truck>());
     }
+
+    // --- DeactivateAsync ---
+
+    [Fact]
+    public async Task DeactivateAsync_ActiveTruck_DeactivatesAndCallsRepository()
+    {
+        var request = _fixture.Create<UpsertTruckRequest>();
+        var truck = new Truck(
+            request.PlateNumber, request.TruckModel,
+            request.OwnershipType, null, request.DateAcquired);
+        var reason = _fixture.Create<string>();
+        _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, null));
+
+        var service = new TruckService(_validator, _repository);
+        var result = await service.DeactivateAsync(truck.Id, reason);
+
+        Assert.True(result.Succeeded);
+        await _repository.Received(1).UpdateAsync(Arg.Is<Truck>(t =>
+            t.Id == truck.Id && !t.IsActive));
+    }
+
+    [Fact]
+    public async Task DeactivateAsync_TruckNotFound_ReturnsFailure()
+    {
+        var id = _fixture.Create<Guid>();
+        _repository.GetByIdAsync(Arg.Any<Guid>()).Returns(((Truck, string?)?)null);
+
+        var service = new TruckService(_validator, _repository);
+        var result = await service.DeactivateAsync(id, _fixture.Create<string>());
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Truck>());
+    }
+
+    [Fact]
+    public async Task DeactivateAsync_AlreadyInactive_ReturnsFailure()
+    {
+        var request = _fixture.Create<UpsertTruckRequest>();
+        var truck = new Truck(
+            request.PlateNumber, request.TruckModel,
+            request.OwnershipType, null, request.DateAcquired);
+        truck.Update(truck.PlateNumber, truck.TruckModel, truck.OwnershipType, truck.DriverId, isActive: false, truck.DateAcquired);
+        _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, null));
+
+        var service = new TruckService(_validator, _repository);
+        var result = await service.DeactivateAsync(truck.Id, _fixture.Create<string>());
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("already inactive", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Truck>());
+    }
+
+    // --- ReactivateAsync ---
+
+    [Fact]
+    public async Task ReactivateAsync_InactiveTruck_ReactivatesAndCallsRepository()
+    {
+        var request = _fixture.Create<UpsertTruckRequest>();
+        var truck = new Truck(
+            request.PlateNumber, request.TruckModel,
+            request.OwnershipType, null, request.DateAcquired);
+        truck.Update(truck.PlateNumber, truck.TruckModel, truck.OwnershipType, truck.DriverId, isActive: false, truck.DateAcquired);
+        var reason = _fixture.Create<string>();
+        _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, null));
+
+        var service = new TruckService(_validator, _repository);
+        var result = await service.ReactivateAsync(truck.Id, reason);
+
+        Assert.True(result.Succeeded);
+        await _repository.Received(1).UpdateAsync(Arg.Is<Truck>(t =>
+            t.Id == truck.Id && t.IsActive));
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_TruckNotFound_ReturnsFailure()
+    {
+        var id = _fixture.Create<Guid>();
+        _repository.GetByIdAsync(Arg.Any<Guid>()).Returns(((Truck, string?)?)null);
+
+        var service = new TruckService(_validator, _repository);
+        var result = await service.ReactivateAsync(id, _fixture.Create<string>());
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Truck>());
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_AlreadyActive_ReturnsFailure()
+    {
+        var request = _fixture.Create<UpsertTruckRequest>();
+        var truck = new Truck(
+            request.PlateNumber, request.TruckModel,
+            request.OwnershipType, null, request.DateAcquired);
+        // Truck is active by default after construction
+        _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, null));
+
+        var service = new TruckService(_validator, _repository);
+        var result = await service.ReactivateAsync(truck.Id, _fixture.Create<string>());
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("already active", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Truck>());
+    }
 }

@@ -9,4 +9,6 @@ public interface IDriverService
     Task<Result<Driver>> CreateAsync(UpsertDriverRequest request);
     Task<Result<DriverDetailDto>> UpdateAsync(Guid id, UpsertDriverRequest request);
     Task<Result<bool>> DeleteAsync(Guid id);
+    Task<Result<bool>> DeactivateAsync(Guid id, string reason);
+    Task<Result<bool>> ReactivateAsync(Guid id);
 }

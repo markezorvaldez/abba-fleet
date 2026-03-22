@@ -1,0 +1,57 @@
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@Title</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (!string.IsNullOrEmpty(WarningText))
+            {
+                <MudAlert Severity="Severity.Warning">@WarningText</MudAlert>
+            }
+            <MudTextField @bind-Value="_confirmationValue" Label="@ConfirmationLabel" Required="true"
+                          Placeholder="@($"Type {ConfirmationLabel} to confirm")" />
+            <MudTextField @bind-Value="_reason" Label="Reason" Required="true" Lines="3"
+                          Placeholder="Please provide a reason..." />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="ConfirmColor"
+                   Disabled="@(!IsValid)" OnClick="Submit">
+            Confirm
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public string Title { get; set; } = "Confirm Action";
+
+    [Parameter]
+    public string? WarningText { get; set; }
+
+    [Parameter]
+    public string ConfirmationLabel { get; set; } = "Confirmation";
+
+    [Parameter]
+    public string ExpectedValue { get; set; } = string.Empty;
+
+    [Parameter]
+    public Color ConfirmColor { get; set; } = Color.Error;
+
+    private string _confirmationValue = string.Empty;
+    private string _reason = string.Empty;
+
+    private bool IsValid =>
+        !string.IsNullOrWhiteSpace(_reason) &&
+        string.Equals(_confirmationValue, ExpectedValue, StringComparison.Ordinal);
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(_reason));
+}
