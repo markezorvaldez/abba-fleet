@@ -215,4 +215,108 @@ public class DriverServiceTests
         Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
         await _repository.DidNotReceive().DeleteAsync(Arg.Any<Driver>());
     }
+
+    // --- DeactivateAsync ---
+
+    [Fact]
+    public async Task DeactivateAsync_ActiveDriver_DeactivatesAndCallsRepository()
+    {
+        var request = _fixture.Create<UpsertDriverRequest>();
+        var driver = new Driver(
+            request.FullName, request.PhoneNumber,
+            null, null, false, request.DateStarted);
+        var reason = _fixture.Create<string>();
+        _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
+
+        var service = new DriverService(_validator, _repository);
+        var result = await service.DeactivateAsync(driver.Id, reason);
+
+        Assert.True(result.Succeeded);
+        await _repository.Received(1).UpdateAsync(Arg.Is<Driver>(d =>
+            d.Id == driver.Id && !d.IsActive));
+    }
+
+    [Fact]
+    public async Task DeactivateAsync_DriverNotFound_ReturnsFailure()
+    {
+        var id = _fixture.Create<Guid>();
+        _repository.GetByIdAsync(Arg.Any<Guid>()).Returns((Driver?)null);
+
+        var service = new DriverService(_validator, _repository);
+        var result = await service.DeactivateAsync(id, _fixture.Create<string>());
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Driver>());
+    }
+
+    [Fact]
+    public async Task DeactivateAsync_AlreadyInactive_ReturnsFailure()
+    {
+        var request = _fixture.Create<UpsertDriverRequest>();
+        var driver = new Driver(
+            request.FullName, request.PhoneNumber,
+            null, null, false, request.DateStarted);
+        driver.Update(driver.FullName, driver.PhoneNumber, null, null, isActive: false, driver.IsReliever, driver.DateStarted);
+        _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
+
+        var service = new DriverService(_validator, _repository);
+        var result = await service.DeactivateAsync(driver.Id, _fixture.Create<string>());
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("already inactive", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Driver>());
+    }
+
+    // --- ReactivateAsync ---
+
+    [Fact]
+    public async Task ReactivateAsync_InactiveDriver_ReactivatesAndCallsRepository()
+    {
+        var request = _fixture.Create<UpsertDriverRequest>();
+        var driver = new Driver(
+            request.FullName, request.PhoneNumber,
+            null, null, false, request.DateStarted);
+        driver.Update(driver.FullName, driver.PhoneNumber, null, null, isActive: false, driver.IsReliever, driver.DateStarted);
+        _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
+
+        var service = new DriverService(_validator, _repository);
+        var result = await service.ReactivateAsync(driver.Id);
+
+        Assert.True(result.Succeeded);
+        await _repository.Received(1).UpdateAsync(Arg.Is<Driver>(d =>
+            d.Id == driver.Id && d.IsActive));
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_DriverNotFound_ReturnsFailure()
+    {
+        var id = _fixture.Create<Guid>();
+        _repository.GetByIdAsync(Arg.Any<Guid>()).Returns((Driver?)null);
+
+        var service = new DriverService(_validator, _repository);
+        var result = await service.ReactivateAsync(id);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Driver>());
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_AlreadyActive_ReturnsFailure()
+    {
+        var request = _fixture.Create<UpsertDriverRequest>();
+        var driver = new Driver(
+            request.FullName, request.PhoneNumber,
+            null, null, false, request.DateStarted);
+        // Driver is active by default after construction
+        _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
+
+        var service = new DriverService(_validator, _repository);
+        var result = await service.ReactivateAsync(driver.Id);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("already active", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Driver>());
+    }
 }

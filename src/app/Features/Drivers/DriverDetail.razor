@@ -44,6 +44,20 @@ else if (_driver is not null)
                        StartIcon="@Icons.Material.Filled.Edit" OnClick="EnterEditMode">
                 Edit
             </MudButton>
+            @if (_driver.IsActive)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Warning"
+                           StartIcon="@Icons.Material.Filled.PersonOff" OnClick="ConfirmDeactivate">
+                    Deactivate
+                </MudButton>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Success"
+                           StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="Reactivate">
+                    Reactivate
+                </MudButton>
+            }
             <MudButton Variant="Variant.Outlined" Color="Color.Error"
                        StartIcon="@Icons.Material.Filled.Delete" OnClick="ConfirmDelete">
                 Delete
@@ -281,6 +295,61 @@ else if (_driver is not null)
 
         Snackbar.Add("Driver deleted.", Severity.Success);
         NavigationManager.NavigateTo(AppRoutes.Drivers);
+    }
+
+    private async Task ConfirmDeactivate()
+    {
+        if (_driver is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<ConfirmDeactivateDialog>
+        {
+            { x => x.Title, "Deactivate Driver" },
+            { x => x.WarningText, "This driver will be deactivated and will no longer appear as available." },
+            { x => x.ConfirmationLabel, "Full Name" },
+            { x => x.ExpectedValue, _driver.FullName },
+            { x => x.ConfirmColor, Color.Warning }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDeactivateDialog>("Deactivate Driver", parameters);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult is null || dialogResult.Canceled)
+        {
+            return;
+        }
+
+        var reason = dialogResult.Data as string;
+        Logger.LogInformation("Driver {DriverId} deactivated. Reason: {Reason}", Id, reason);
+
+        var result = await DriverService.DeactivateAsync(Id, reason ?? string.Empty);
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Failed to deactivate driver.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add("Driver deactivated.", Severity.Success);
+        await LoadDriver();
+    }
+
+    private async Task Reactivate()
+    {
+        Logger.LogInformation("Driver {DriverId} reactivated.", Id);
+
+        var result = await DriverService.ReactivateAsync(Id);
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Failed to reactivate driver.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add("Driver reactivated.", Severity.Success);
+        await LoadDriver();
     }
 
     private sealed class DriverForm

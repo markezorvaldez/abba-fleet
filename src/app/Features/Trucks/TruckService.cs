@@ -113,6 +113,62 @@ public class TruckService(IValidator<UpsertTruckRequest> validator, ITruckReposi
         return repository.GetActiveDriverOptionsAsync();
     }
 
+    public async Task<Result<bool>> DeactivateAsync(Guid id, string reason)
+    {
+        var result = await repository.GetByIdAsync(id);
+
+        if (result is null)
+        {
+            return "Truck not found.";
+        }
+
+        var truck = result.Value.Truck;
+
+        if (!truck.IsActive)
+        {
+            return "Truck is already inactive.";
+        }
+
+        truck.Update(
+            truck.PlateNumber,
+            truck.TruckModel,
+            truck.OwnershipType,
+            truck.DriverId,
+            isActive: false,
+            truck.DateAcquired);
+
+        await repository.UpdateAsync(truck);
+        return true;
+    }
+
+    public async Task<Result<bool>> ReactivateAsync(Guid id, string reason)
+    {
+        var result = await repository.GetByIdAsync(id);
+
+        if (result is null)
+        {
+            return "Truck not found.";
+        }
+
+        var truck = result.Value.Truck;
+
+        if (truck.IsActive)
+        {
+            return "Truck is already active.";
+        }
+
+        truck.Update(
+            truck.PlateNumber,
+            truck.TruckModel,
+            truck.OwnershipType,
+            truck.DriverId,
+            isActive: true,
+            truck.DateAcquired);
+
+        await repository.UpdateAsync(truck);
+        return true;
+    }
+
     private static TruckDetailDto MapToDetail(Truck t, string? driverName) => new(
         t.Id,
         t.PlateNumber,
