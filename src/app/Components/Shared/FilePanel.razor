@@ -1,0 +1,160 @@
+@using AbbaFleet.Shared
+@using MudBlazor
+@inject IFileService FileService
+@inject ISnackbar Snackbar
+@inject ILogger<FilePanel> Logger
+
+<MudStack Class="pa-4" Spacing="3">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h6">Files</MudText>
+        <MudSpacer />
+        <MudFileUpload T="IBrowserFile" FilesChanged="UploadFile" Accept="*/*">
+            <CustomContent Context="upload">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Upload"
+                           OnClick="@upload.OpenFilePickerAsync">
+                    Upload File
+                </MudButton>
+            </CustomContent>
+        </MudFileUpload>
+    </MudStack>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (_uploading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Secondary" />
+    }
+    else if (_files.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Default">No files attached yet.</MudText>
+    }
+    else
+    {
+        <MudTable Items="_files" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
+            <HeaderContent>
+                <MudTh>File Name</MudTh>
+                <MudTh>Note</MudTh>
+                <MudTh>Size</MudTh>
+                <MudTh>Type</MudTh>
+                <MudTh>Uploaded</MudTh>
+                <MudTh>By</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>
+                    <MudLink Href="@($"/api/files/{context.Id}")" Target="_blank">@context.FileName</MudLink>
+                </MudTd>
+                <MudTd>@(context.NoteTitle ?? "—")</MudTd>
+                <MudTd>@FormatFileSize(context.FileSize)</MudTd>
+                <MudTd>@context.ContentType</MudTd>
+                <MudTd>@context.UploadedAt.LocalDateTime.ToString("dd MMM yyyy h:mm tt")</MudTd>
+                <MudTd>@context.UploadedBy</MudTd>
+                <MudTd>
+                    <MudTooltip Text="Delete">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                       Color="Color.Error"
+                                       OnClick="@(() => DeleteFile(context))" />
+                    </MudTooltip>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public NoteEntityType EntityType { get; set; }
+
+    [Parameter]
+    public Guid EntityId { get; set; }
+
+    private List<FileDto> _files = [];
+    private bool _loading = true;
+    private bool _uploading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFiles();
+    }
+
+    private async Task LoadFiles()
+    {
+        _loading = true;
+
+        try
+        {
+            var files = await FileService.GetFilesForEntityAsync(EntityType, EntityId);
+            _files = [.. files];
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load files for {EntityType} {EntityId}", EntityType, EntityId);
+            Snackbar.Add("Failed to load files.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task UploadFile(IBrowserFile file)
+    {
+        _uploading = true;
+
+        try
+        {
+            var result = await FileService.UploadFileAsync(null, EntityType, EntityId, file);
+
+            if (!result.Succeeded)
+            {
+                Snackbar.Add(result.Error ?? "Failed to upload file.", Severity.Error);
+                return;
+            }
+
+            Snackbar.Add("File uploaded.", Severity.Success);
+            await LoadFiles();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to upload file for {EntityType} {EntityId}", EntityType, EntityId);
+            Snackbar.Add("Failed to upload file.", Severity.Error);
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    private async Task DeleteFile(FileDto file)
+    {
+        var result = await FileService.DeleteFileAsync(file.Id);
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Failed to delete file.", Severity.Error);
+            return;
+        }
+
+        Logger.LogInformation("File {FileId} deleted", file.Id);
+        Snackbar.Add("File deleted.", Severity.Success);
+        await LoadFiles();
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024)
+        {
+            return $"{bytes} B";
+        }
+
+        if (bytes < 1024 * 1024)
+        {
+            return $"{bytes / 1024.0:F1} KB";
+        }
+
+        return $"{bytes / (1024.0 * 1024):F1} MB";
+    }
+}
