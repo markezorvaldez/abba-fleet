@@ -11,4 +11,5 @@ public sealed class Result<T>
 
     public static implicit operator Result<T>(T value) => new(value);
     public static implicit operator Result<T>(string error) => new(error);
+    public static implicit operator T(Result<T> result) => result.Value!;
 }
