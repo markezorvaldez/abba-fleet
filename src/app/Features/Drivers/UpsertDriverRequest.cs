@@ -6,4 +6,5 @@ public sealed record UpsertDriverRequest(
     string? FacebookLink,
     string? Address,
     bool IsReliever,
-    DateOnly DateStarted);
+    DateOnly DateStarted,
+    bool IsActive = true);

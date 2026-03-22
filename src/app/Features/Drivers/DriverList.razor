@@ -31,7 +31,9 @@
     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenAddDialog" Class="mb-1">Add Driver</MudButton>
 </MudStack>
 
-<MudTable Items="FilteredDrivers" Hover="true" Striped="true" Loading="_loading">
+<MudTable Items="FilteredDrivers" Hover="true" Striped="true" Loading="_loading" T="DriverSummary"
+          OnRowClick="@(args => { if (args.Item is not null) NavigationManager.NavigateTo(AppRoutes.DriverDetailFor(args.Item.Id)); })"
+          RowStyle="cursor: pointer;">
     <HeaderContent>
         <MudTh>Full Name</MudTh>
         <MudTh>Phone Number</MudTh>

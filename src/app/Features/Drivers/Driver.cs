@@ -43,4 +43,29 @@ public class Driver
             UpdatedAt = DateTimeOffset.UtcNow
         };
     }
+
+    public void Update(
+        string fullName,
+        string phoneNumber,
+        string? facebookLink,
+        string? address,
+        bool isActive,
+        bool isReliever,
+        DateOnly dateStarted)
+    {
+        var trimmedName = fullName.Trim();
+        var trimmedPhone = phoneNumber.Trim();
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(trimmedName, nameof(fullName));
+        ArgumentException.ThrowIfNullOrWhiteSpace(trimmedPhone, nameof(phoneNumber));
+
+        FullName = trimmedName;
+        PhoneNumber = trimmedPhone;
+        FacebookLink = facebookLink?.Trim();
+        Address = address?.Trim();
+        IsActive = isActive;
+        IsReliever = isReliever;
+        DateStarted = dateStarted;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
 }

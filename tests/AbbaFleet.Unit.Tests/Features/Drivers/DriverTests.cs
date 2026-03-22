@@ -66,4 +66,82 @@ public class DriverTests
         Assert.Throws<ArgumentException>(() =>
             Driver.Create(_fixture.Create<string>(), phoneNumber, null, null, false, _fixture.Create<DateOnly>()));
     }
+
+    // --- Update ---
+
+    private Driver CreateDriver() =>
+        Driver.Create(
+            _fixture.Create<string>(), _fixture.Create<string>(),
+            _fixture.Create<string>(), _fixture.Create<string>(),
+            false, _fixture.Create<DateOnly>());
+
+    [Fact]
+    public void Update_SetsAllFields()
+    {
+        var driver = CreateDriver();
+        var newName = _fixture.Create<string>();
+        var newPhone = _fixture.Create<string>();
+        var newFacebook = _fixture.Create<string>();
+        var newAddress = _fixture.Create<string>();
+        var newDate = _fixture.Create<DateOnly>();
+
+        driver.Update(newName, newPhone, newFacebook, newAddress,
+            isActive: false, isReliever: true, newDate);
+
+        Assert.Equal(newName, driver.FullName);
+        Assert.Equal(newPhone, driver.PhoneNumber);
+        Assert.Equal(newFacebook, driver.FacebookLink);
+        Assert.Equal(newAddress, driver.Address);
+        Assert.False(driver.IsActive);
+        Assert.True(driver.IsReliever);
+        Assert.Equal(newDate, driver.DateStarted);
+    }
+
+    [Fact]
+    public void Update_TrimsWhitespace()
+    {
+        var driver = CreateDriver();
+        var newName = _fixture.Create<string>();
+        var newPhone = _fixture.Create<string>();
+
+        driver.Update($"  {newName}  ", $"  {newPhone}  ",
+            null, null, true, false, _fixture.Create<DateOnly>());
+
+        Assert.Equal(newName, driver.FullName);
+        Assert.Equal(newPhone, driver.PhoneNumber);
+    }
+
+    [Fact]
+    public void Update_SetsUpdatedAt()
+    {
+        var driver = CreateDriver();
+        var beforeUpdate = driver.UpdatedAt;
+
+        driver.Update(_fixture.Create<string>(), _fixture.Create<string>(),
+            null, null, true, false, _fixture.Create<DateOnly>());
+
+        Assert.True(driver.UpdatedAt >= beforeUpdate);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Update_ThrowsOnEmptyFullName(string fullName)
+    {
+        var driver = CreateDriver();
+
+        Assert.Throws<ArgumentException>(() =>
+            driver.Update(fullName, _fixture.Create<string>(), null, null, true, false, _fixture.Create<DateOnly>()));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Update_ThrowsOnEmptyPhoneNumber(string phoneNumber)
+    {
+        var driver = CreateDriver();
+
+        Assert.Throws<ArgumentException>(() =>
+            driver.Update(_fixture.Create<string>(), phoneNumber, null, null, true, false, _fixture.Create<DateOnly>()));
+    }
 }

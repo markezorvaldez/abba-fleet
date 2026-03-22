@@ -1,0 +1,295 @@
+@page "/drivers/{Id:guid}"
+@using AbbaFleet.Shared
+@using AbbaFleet.Features.Drivers
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IDriverService DriverService
+@inject IPermissionService PermissionService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ILogger<DriverDetail> Logger
+
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<PageTitle>@(_driver?.FullName ?? "Driver") — ABBA Fleet</PageTitle>
+
+@if (_notFound)
+{
+    <MudText Typo="Typo.h5" Class="mb-4">Driver not found</MudText>
+    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
+               OnClick="@(() => NavigationManager.NavigateTo(AppRoutes.Drivers))">
+        Back to Drivers
+    </MudButton>
+}
+else if (_driver is not null)
+{
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       OnClick="@(() => NavigationManager.NavigateTo(AppRoutes.Drivers))" />
+        <MudText Typo="Typo.h5">@_driver.FullName</MudText>
+        <MudChip T="string" Color="@(_driver.IsActive ? Color.Success : Color.Default)" Size="Size.Small">
+            @(_driver.IsActive ? "Active" : "Inactive")
+        </MudChip>
+        @if (_driver.IsReliever)
+        {
+            <MudChip T="string" Color="Color.Info" Size="Size.Small">Reliever</MudChip>
+        }
+        <MudSpacer />
+        @if (!_isEditing)
+        {
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Edit" OnClick="EnterEditMode">
+                Edit
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                       StartIcon="@Icons.Material.Filled.Delete" OnClick="ConfirmDelete">
+                Delete
+            </MudButton>
+        }
+    </MudStack>
+
+    @if (_isEditing)
+    {
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_form.FullName" Label="Full Name" Required="true"
+                                      Counter="100" MaxLength="100" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_form.PhoneNumber" Label="Phone Number" Required="true"
+                                      Counter="100" MaxLength="100" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_form.FacebookLink" Label="Facebook Link"
+                                      Counter="100" MaxLength="100" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_form.Address" Label="Address"
+                                      Counter="100" MaxLength="100" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_form.DateStarted" Label="Date Started"
+                                      InputType="InputType.Date" Required="true" />
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudCheckBox @bind-Value="_form.IsActive" Label="Active" />
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudCheckBox @bind-Value="_form.IsReliever" Label="Reliever" />
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+            <MudCardActions>
+                <MudSpacer />
+                <MudButton OnClick="CancelEdit">Cancel</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveEdit">Save</MudButton>
+            </MudCardActions>
+        </MudCard>
+    }
+    else
+    {
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption">Full Name</MudText>
+                        <MudText>@_driver.FullName</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption">Phone Number</MudText>
+                        <MudText>@_driver.PhoneNumber</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption">Facebook Link</MudText>
+                        <MudText>@(_driver.FacebookLink ?? "—")</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption">Address</MudText>
+                        <MudText>@(_driver.Address ?? "—")</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption">Date Started</MudText>
+                        <MudText>@_driver.DateStarted.ToString("dd MMM yyyy")</MudText>
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.caption">Status</MudText>
+                        <MudText>@(_driver.IsActive ? "Active" : "Inactive")</MudText>
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.caption">Reliever</MudText>
+                        <MudText>@(_driver.IsReliever ? "Yes" : "No")</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption">Created</MudText>
+                        <MudText>@_driver.CreatedAt.LocalDateTime.ToString("dd MMM yyyy h:mm tt")</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption">Last Updated</MudText>
+                        <MudText>@_driver.UpdatedAt.LocalDateTime.ToString("dd MMM yyyy h:mm tt")</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+    }
+
+    <MudTabs Elevation="1" Rounded="true" Class="mt-4">
+        <MudTabPanel Text="Notes">
+            <MudText Class="pa-4" Typo="Typo.body2" Color="Color.Default">Coming soon</MudText>
+        </MudTabPanel>
+        <MudTabPanel Text="Files">
+            <MudText Class="pa-4" Typo="Typo.body2" Color="Color.Default">Coming soon</MudText>
+        </MudTabPanel>
+        <MudTabPanel Text="Cash Advances">
+            <MudText Class="pa-4" Typo="Typo.body2" Color="Color.Default">Coming soon</MudText>
+        </MudTabPanel>
+    </MudTabs>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private DriverDetailDto? _driver;
+    private bool _notFound;
+    private bool _isEditing;
+    private DriverForm _form = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await PermissionService.HasAsync(Permission.ManageDrivers))
+        {
+            NavigationManager.NavigateTo(AppRoutes.Dashboard);
+            return;
+        }
+
+        await LoadDriver();
+    }
+
+    private async Task LoadDriver()
+    {
+        _driver = await DriverService.GetByIdAsync(Id);
+        _notFound = _driver is null;
+    }
+
+    private void EnterEditMode()
+    {
+        if (_driver is null)
+        {
+            return;
+        }
+
+        _form = new DriverForm
+        {
+            FullName = _driver.FullName,
+            PhoneNumber = _driver.PhoneNumber,
+            FacebookLink = _driver.FacebookLink,
+            Address = _driver.Address,
+            IsActive = _driver.IsActive,
+            IsReliever = _driver.IsReliever,
+            DateStarted = _driver.DateStarted.ToString("yyyy-MM-dd")
+        };
+        _isEditing = true;
+    }
+
+    private void CancelEdit() => _isEditing = false;
+
+    private async Task SaveEdit()
+    {
+        if (string.IsNullOrWhiteSpace(_form.FullName) || string.IsNullOrWhiteSpace(_form.PhoneNumber))
+        {
+            Snackbar.Add("Full name and phone number are required.", Severity.Warning);
+            return;
+        }
+
+        if (!DateOnly.TryParse(_form.DateStarted, out var dateStarted))
+        {
+            Snackbar.Add("Date started is required.", Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters<ReasonDialog>
+        {
+            { x => x.Title, "Reason for edit" },
+            { x => x.ConfirmColor, Color.Primary }
+        };
+
+        var dialog = await DialogService.ShowAsync<ReasonDialog>("Edit Reason", parameters);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult is null || dialogResult.Canceled)
+        {
+            return;
+        }
+
+        var reason = dialogResult.Data as string;
+        Logger.LogInformation("Driver {DriverId} edited. Reason: {Reason}", Id, reason);
+
+        var request = new UpsertDriverRequest(
+            _form.FullName,
+            _form.PhoneNumber,
+            _form.FacebookLink,
+            _form.Address,
+            _form.IsReliever,
+            dateStarted,
+            _form.IsActive);
+
+        var result = await DriverService.UpdateAsync(Id, request);
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Failed to update driver.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add("Driver updated.", Severity.Success);
+        _isEditing = false;
+        await LoadDriver();
+    }
+
+    private async Task ConfirmDelete()
+    {
+        var parameters = new DialogParameters<ReasonDialog>
+        {
+            { x => x.Title, "Reason for deletion" },
+            { x => x.WarningText, "This action cannot be undone. The driver will be permanently deleted." },
+            { x => x.ConfirmColor, Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ReasonDialog>("Delete Driver", parameters);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult is null || dialogResult.Canceled)
+        {
+            return;
+        }
+
+        var reason = dialogResult.Data as string;
+        Logger.LogInformation("Driver {DriverId} deleted. Reason: {Reason}", Id, reason);
+
+        var result = await DriverService.DeleteAsync(Id);
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Failed to delete driver.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add("Driver deleted.", Severity.Success);
+        NavigationManager.NavigateTo(AppRoutes.Drivers);
+    }
+
+    private sealed class DriverForm
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string? FacebookLink { get; set; }
+        public string? Address { get; set; }
+        public bool IsActive { get; set; } = true;
+        public bool IsReliever { get; set; }
+        public string DateStarted { get; set; } = DateTime.Today.ToString("yyyy-MM-dd");
+    }
+}

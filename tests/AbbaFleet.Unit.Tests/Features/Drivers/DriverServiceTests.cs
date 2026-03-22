@@ -84,4 +84,135 @@ public class DriverServiceTests
         Assert.Equal(name2, summaries[1].FullName);
         Assert.True(summaries[1].IsReliever);
     }
+
+    // --- GetByIdAsync ---
+
+    [Fact]
+    public async Task GetByIdAsync_DriverExists_ReturnsMappedDetail()
+    {
+        var request = _fixture.Create<UpsertDriverRequest>();
+        var driver = Driver.Create(
+            request.FullName, request.PhoneNumber,
+            request.FacebookLink, request.Address,
+            request.IsReliever, request.DateStarted);
+        _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
+
+        var service = new DriverService(_validator, _repository);
+        var detail = await service.GetByIdAsync(driver.Id);
+
+        Assert.NotNull(detail);
+        Assert.Equal(request.FullName, detail.FullName);
+        Assert.Equal(request.PhoneNumber, detail.PhoneNumber);
+        Assert.Equal(request.FacebookLink, detail.FacebookLink);
+        Assert.Equal(request.Address, detail.Address);
+        Assert.Equal(request.IsReliever, detail.IsReliever);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_DriverNotFound_ReturnsNull()
+    {
+        var id = _fixture.Create<Guid>();
+        _repository.GetByIdAsync(Arg.Is(id)).Returns((Driver?)null);
+
+        var service = new DriverService(_validator, _repository);
+        var detail = await service.GetByIdAsync(id);
+
+        Assert.Null(detail);
+    }
+
+    // --- UpdateAsync ---
+
+    [Fact]
+    public async Task UpdateAsync_ValidInput_ReturnsSuccessAndCallsRepository()
+    {
+        var createRequest = _fixture.Create<UpsertDriverRequest>();
+        var driver = Driver.Create(
+            createRequest.FullName, createRequest.PhoneNumber,
+            null, null, false, createRequest.DateStarted);
+        _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
+
+        var updateRequest = _fixture.Create<UpsertDriverRequest>();
+        _validator.Validate(Arg.Is<UpsertDriverRequest>(r =>
+            r.FullName == updateRequest.FullName && r.PhoneNumber == updateRequest.PhoneNumber))
+            .Returns(new ValidationResult());
+
+        var service = new DriverService(_validator, _repository);
+        var result = await service.UpdateAsync(driver.Id, updateRequest);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(updateRequest.FullName, result.Value!.FullName);
+        Assert.Equal(updateRequest.PhoneNumber, result.Value.PhoneNumber);
+        Assert.Equal(updateRequest.IsReliever, result.Value.IsReliever);
+        await _repository.Received(1).UpdateAsync(Arg.Is<Driver>(d =>
+            d.FullName == updateRequest.FullName && d.PhoneNumber == updateRequest.PhoneNumber));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_DriverNotFound_ReturnsFailure()
+    {
+        var id = _fixture.Create<Guid>();
+        var request = _fixture.Create<UpsertDriverRequest>();
+        _validator.Validate(Arg.Is<UpsertDriverRequest>(r =>
+            r.FullName == request.FullName && r.PhoneNumber == request.PhoneNumber))
+            .Returns(new ValidationResult());
+        _repository.GetByIdAsync(Arg.Is(id)).Returns((Driver?)null);
+
+        var service = new DriverService(_validator, _repository);
+        var result = await service.UpdateAsync(id, request);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Driver>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_InvalidInput_ReturnsFailure_DoesNotCallRepository()
+    {
+        var request = _fixture.Create<UpsertDriverRequest>();
+        var errorMessage = _fixture.Create<string>();
+
+        _validator.Validate(Arg.Is<UpsertDriverRequest>(r =>
+            r.FullName == request.FullName && r.PhoneNumber == request.PhoneNumber))
+            .Returns(new ValidationResult([new ValidationFailure("FullName", errorMessage)]));
+
+        var service = new DriverService(_validator, _repository);
+        var result = await service.UpdateAsync(_fixture.Create<Guid>(), request);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(errorMessage, result.Error);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Driver>());
+        await _repository.DidNotReceive().GetByIdAsync(Arg.Any<Guid>());
+    }
+
+    // --- DeleteAsync ---
+
+    [Fact]
+    public async Task DeleteAsync_DriverExists_ReturnsSuccessAndCallsRepository()
+    {
+        var request = _fixture.Create<UpsertDriverRequest>();
+        var driver = Driver.Create(
+            request.FullName, request.PhoneNumber,
+            null, null, false, request.DateStarted);
+        _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
+
+        var service = new DriverService(_validator, _repository);
+        var result = await service.DeleteAsync(driver.Id);
+
+        Assert.True(result.Succeeded);
+        await _repository.Received(1).DeleteAsync(Arg.Is<Driver>(d => d.Id == driver.Id));
+    }
+
+    [Fact]
+    public async Task DeleteAsync_DriverNotFound_ReturnsFailure()
+    {
+        var id = _fixture.Create<Guid>();
+        _repository.GetByIdAsync(Arg.Is(id)).Returns((Driver?)null);
+
+        var service = new DriverService(_validator, _repository);
+        var result = await service.DeleteAsync(id);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().DeleteAsync(Arg.Any<Driver>());
+    }
 }
