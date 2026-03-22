@@ -62,6 +62,7 @@ builder.Services.AddDataProtection()
 
 builder.Services.AddMudServices();
 builder.Services.AddHostedService<MigrationHostedService>();
+builder.Services.AddHostedService<AdminSeedService>();
 
 builder.Host.UseLamar(registry =>
 {

@@ -39,9 +39,12 @@ public class IntegrationTestFixture : IAsyncLifetime
                 builder.UseSetting("SEED_ADMIN_PASSWORD", AdminPassword);
                 builder.ConfigureServices(services =>
                 {
-                    // Remove the background migration service; fixture runs setup synchronously below
-                    var descriptor = services.SingleOrDefault(d => d.ImplementationType == typeof(MigrationHostedService));
-                    if (descriptor != null)
+                    // Remove background hosted services; fixture runs setup synchronously below
+                    var hostedServices = services
+                        .Where(d => d.ImplementationType == typeof(MigrationHostedService)
+                                 || d.ImplementationType == typeof(AdminSeedService))
+                        .ToList();
+                    foreach (var descriptor in hostedServices)
                     {
                         services.Remove(descriptor);
                     }
