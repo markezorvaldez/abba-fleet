@@ -45,9 +45,10 @@
         <MudTd>@context.FullName</MudTd>
         <MudTd>@context.PhoneNumber</MudTd>
         <MudTd>
-            <MudChip T="string" Color="@(context.IsReliever ? Color.Info : Color.Default)" Size="Size.Small">
-                @(context.IsReliever ? "Yes" : "No")
-            </MudChip>
+            @if (context.IsReliever)
+            {
+                <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
+            }
         </MudTd>
         <MudTd>
             <MudChip T="string" Color="@(context.IsActive ? Color.Success : Color.Default)" Size="Size.Small">
