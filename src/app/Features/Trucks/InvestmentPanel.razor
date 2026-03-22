@@ -12,7 +12,7 @@
         @if (!_loading)
         {
             <MudText Typo="Typo.subtitle1" Class="mr-4">
-                <b>Total: R @_total.ToString("N2")</b>
+                <b>Total: ₱ @_total.ToString("N2")</b>
             </MudText>
         }
         <MudButton Variant="Variant.Filled" Color="Color.Primary"
@@ -47,7 +47,7 @@
                     </MudChip>
                 </MudTd>
                 <MudTd>@context.Description</MudTd>
-                <MudTd Style="text-align:right">R @context.Amount.ToString("N2")</MudTd>
+                <MudTd Style="text-align:right">₱ @context.Amount.ToString("N2")</MudTd>
                 <MudTd>
                     @context.CreatedBy
                     <MudText Typo="Typo.caption" Color="Color.Default">
