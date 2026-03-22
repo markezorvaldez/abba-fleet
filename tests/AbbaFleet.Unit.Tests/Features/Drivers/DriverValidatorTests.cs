@@ -142,4 +142,97 @@ public class DriverValidatorTests
         Assert.Equal(facebook, result.Value.FacebookLink);
         Assert.Equal(address, result.Value.Address);
     }
+
+    // --- TryUpdate tests ---
+
+    private Driver CreateValidDriver()
+    {
+        var result = Driver.TryCreate(
+            _validator,
+            _fixture.Create<string>(), _fixture.Create<string>(),
+            _fixture.Create<string>(), _fixture.Create<string>(),
+            false, _fixture.Create<DateOnly>());
+        return result.Value!;
+    }
+
+    [Fact]
+    public void TryUpdate_ValidInput_UpdatesAllFields()
+    {
+        var driver = CreateValidDriver();
+        var newName = _fixture.Create<string>();
+        var newPhone = _fixture.Create<string>();
+        var newFacebook = _fixture.Create<string>();
+        var newAddress = _fixture.Create<string>();
+        var newDate = _fixture.Create<DateOnly>();
+
+        var result = driver.TryUpdate(
+            _validator, newName, newPhone, newFacebook, newAddress,
+            isActive: false, isReliever: true, newDate);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(newName, driver.FullName);
+        Assert.Equal(newPhone, driver.PhoneNumber);
+        Assert.Equal(newFacebook, driver.FacebookLink);
+        Assert.Equal(newAddress, driver.Address);
+        Assert.False(driver.IsActive);
+        Assert.True(driver.IsReliever);
+        Assert.Equal(newDate, driver.DateStarted);
+    }
+
+    [Fact]
+    public void TryUpdate_InvalidInput_ReturnsFailure_DoesNotMutate()
+    {
+        var driver = CreateValidDriver();
+        var originalName = driver.FullName;
+        var originalPhone = driver.PhoneNumber;
+        var originalFacebook = driver.FacebookLink;
+        var originalAddress = driver.Address;
+        var originalIsActive = driver.IsActive;
+        var originalIsReliever = driver.IsReliever;
+        var originalDateStarted = driver.DateStarted;
+
+        var result = driver.TryUpdate(
+            _validator, "", _fixture.Create<string>(),
+            null, null, false, true, _fixture.Create<DateOnly>());
+
+        Assert.False(result.Succeeded);
+        Assert.NotNull(result.Error);
+        Assert.Equal(originalName, driver.FullName);
+        Assert.Equal(originalPhone, driver.PhoneNumber);
+        Assert.Equal(originalFacebook, driver.FacebookLink);
+        Assert.Equal(originalAddress, driver.Address);
+        Assert.Equal(originalIsActive, driver.IsActive);
+        Assert.Equal(originalIsReliever, driver.IsReliever);
+        Assert.Equal(originalDateStarted, driver.DateStarted);
+    }
+
+    [Fact]
+    public void TryUpdate_TrimsWhitespace()
+    {
+        var driver = CreateValidDriver();
+        var newName = _fixture.Create<string>();
+        var newPhone = _fixture.Create<string>();
+
+        var result = driver.TryUpdate(
+            _validator, $"  {newName}  ", $"  {newPhone}  ",
+            null, null, true, false, _fixture.Create<DateOnly>());
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(newName, driver.FullName);
+        Assert.Equal(newPhone, driver.PhoneNumber);
+    }
+
+    [Fact]
+    public void TryUpdate_SetsUpdatedAt()
+    {
+        var driver = CreateValidDriver();
+        var beforeUpdate = driver.UpdatedAt;
+
+        var result = driver.TryUpdate(
+            _validator, _fixture.Create<string>(), _fixture.Create<string>(),
+            null, null, true, false, _fixture.Create<DateOnly>());
+
+        Assert.True(result.Succeeded);
+        Assert.True(driver.UpdatedAt >= beforeUpdate);
+    }
 }

@@ -50,4 +50,43 @@ public class Driver
 
         return driver;
     }
+
+    public Result<Driver> TryUpdate(
+        IValidator<Driver> validator,
+        string fullName,
+        string phoneNumber,
+        string? facebookLink,
+        string? address,
+        bool isActive,
+        bool isReliever,
+        DateOnly dateStarted)
+    {
+        var candidate = new Driver
+        {
+            FullName = fullName.Trim(),
+            PhoneNumber = phoneNumber.Trim(),
+            FacebookLink = facebookLink?.Trim(),
+            Address = address?.Trim(),
+            IsActive = isActive,
+            IsReliever = isReliever,
+            DateStarted = dateStarted
+        };
+
+        var validation = validator.Validate(candidate);
+
+        if (!validation.IsValid)
+        {
+            return string.Join(" | ", validation.Errors.Select(e => e.ErrorMessage));
+        }
+
+        FullName = candidate.FullName;
+        PhoneNumber = candidate.PhoneNumber;
+        FacebookLink = candidate.FacebookLink;
+        Address = candidate.Address;
+        IsActive = candidate.IsActive;
+        IsReliever = candidate.IsReliever;
+        DateStarted = candidate.DateStarted;
+        UpdatedAt = DateTimeOffset.UtcNow;
+        return this;
+    }
 }
