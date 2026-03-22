@@ -129,11 +129,24 @@ else if (_truck is not null)
                         <MudText Typo="Typo.caption">Assigned Driver</MudText>
                         @if (_truck.DriverId.HasValue && _truck.DriverName is not null)
                         {
-                            <MudLink Href="@AppRoutes.DriverDetailFor(_truck.DriverId.Value)">@_truck.DriverName</MudLink>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudLink Href="@AppRoutes.DriverDetailFor(_truck.DriverId.Value)">@_truck.DriverName</MudLink>
+                                <MudIconButton Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small"
+                                               Color="Color.Primary" title="Change Driver"
+                                               OnClick="OpenChangeDriverDialog" />
+                                <MudIconButton Icon="@Icons.Material.Filled.PersonRemove" Size="Size.Small"
+                                               Color="Color.Error" title="Remove Driver"
+                                               OnClick="OpenRemoveDriverDialog" />
+                            </MudStack>
                         }
                         else
                         {
-                            <MudText>—</MudText>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudText>No driver assigned</MudText>
+                                <MudIconButton Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Small"
+                                               Color="Color.Primary" title="Assign Driver"
+                                               OnClick="OpenAssignDriverDialog" />
+                            </MudStack>
                         }
                     </MudItem>
                     <MudItem xs="12" sm="6">
@@ -268,6 +281,143 @@ else if (_truck is not null)
 
         Snackbar.Add("Truck updated.", Severity.Success);
         _isEditing = false;
+        await LoadTruck();
+    }
+
+    private async Task OpenAssignDriverDialog()
+    {
+        _driverOptions = [.. await TruckService.GetDriverOptionsAsync()];
+
+        var parameters = new DialogParameters<AssignDriverDialog>
+        {
+            { x => x.Title, "Assign Driver" },
+            { x => x.DriverOptions, _driverOptions }
+        };
+
+        var dialog = await DialogService.ShowAsync<AssignDriverDialog>("Assign Driver", parameters);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult is null || dialogResult.Canceled)
+        {
+            return;
+        }
+
+        var assignment = dialogResult.Data as AssignDriverDialogResult;
+
+        if (assignment is null)
+        {
+            return;
+        }
+
+        await PerformAssign(assignment.DriverId, assignment.Reason, force: false);
+    }
+
+    private async Task OpenChangeDriverDialog()
+    {
+        _driverOptions = [.. await TruckService.GetDriverOptionsAsync()];
+
+        var parameters = new DialogParameters<AssignDriverDialog>
+        {
+            { x => x.Title, "Change Driver" },
+            { x => x.DriverOptions, _driverOptions },
+            { x => x.CurrentDriverId, _truck?.DriverId }
+        };
+
+        var dialog = await DialogService.ShowAsync<AssignDriverDialog>("Change Driver", parameters);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult is null || dialogResult.Canceled)
+        {
+            return;
+        }
+
+        var assignment = dialogResult.Data as AssignDriverDialogResult;
+
+        if (assignment is null)
+        {
+            return;
+        }
+
+        await PerformAssign(assignment.DriverId, assignment.Reason, force: false);
+    }
+
+    private async Task PerformAssign(Guid driverId, string reason, bool force)
+    {
+        var result = await TruckService.AssignDriverAsync(Id, driverId, reason, force);
+
+        if (!result.Succeeded)
+        {
+            if (result.Error?.StartsWith("CONFLICT:") == true)
+            {
+                var conflictPlate = result.Error["CONFLICT:".Length..];
+                var confirmed = await ConfirmReassignment(driverId, conflictPlate, reason);
+
+                if (confirmed)
+                {
+                    await PerformAssign(driverId, reason, force: true);
+                }
+
+                return;
+            }
+
+            Snackbar.Add(result.Error ?? "Failed to assign driver.", Severity.Error);
+            return;
+        }
+
+        Logger.LogInformation("Driver assigned to truck {TruckId}. Reason: {Reason}", Id, reason);
+        Snackbar.Add("Driver assigned.", Severity.Success);
+        await LoadTruck();
+    }
+
+    private async Task<bool> ConfirmReassignment(Guid driverId, string conflictPlate, string reason)
+    {
+        var driverName = _driverOptions.FirstOrDefault(d => d.Id == driverId)?.Label ?? "This driver";
+
+        var parameters = new DialogParameters<ConfirmReassignDialog>
+        {
+            { x => x.DriverName, driverName },
+            { x => x.ConflictPlateNumber, conflictPlate }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmReassignDialog>("Reassign Driver?", parameters);
+        var dialogResult = await dialog.Result;
+        return dialogResult is not null && !dialogResult.Canceled;
+    }
+
+    private async Task OpenRemoveDriverDialog()
+    {
+        var parameters = new DialogParameters<ReasonDialog>
+        {
+            { x => x.Title, "Reason for removing driver" },
+            { x => x.WarningText, "The driver will be unassigned from this truck." },
+            { x => x.ConfirmColor, Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ReasonDialog>("Remove Driver", parameters);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult is null || dialogResult.Canceled)
+        {
+            return;
+        }
+
+        var reason = dialogResult.Data as string;
+
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return;
+        }
+
+        var result = await TruckService.UnassignDriverAsync(Id, reason);
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Failed to remove driver.", Severity.Error);
+            return;
+        }
+
+        Logger.LogInformation("Driver removed from truck {TruckId}. Reason: {Reason}", Id, reason);
+        Snackbar.Add("Driver removed.", Severity.Success);
         await LoadTruck();
     }
 

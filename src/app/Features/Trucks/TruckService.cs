@@ -169,6 +169,97 @@ public class TruckService(IValidator<UpsertTruckRequest> validator, ITruckReposi
         return true;
     }
 
+    public async Task<Result<TruckDetailDto>> AssignDriverAsync(Guid truckId, Guid driverId, string reason, bool force = false)
+    {
+        var truckResult = await repository.GetByIdAsync(truckId);
+
+        if (truckResult is null)
+        {
+            return "Truck not found.";
+        }
+
+        var driver = await repository.GetDriverLookupAsync(driverId);
+
+        if (driver is null)
+        {
+            return "Driver not found.";
+        }
+
+        if (!driver.IsActive)
+        {
+            return "Deactivated drivers cannot be assigned to a truck.";
+        }
+
+        if (truckResult.Value.Truck.DriverId == driverId)
+        {
+            return "This driver is already assigned to this truck.";
+        }
+
+        var conflictResult = await repository.GetByDriverIdAsync(driverId);
+
+        if (conflictResult is not null && !force)
+        {
+            return $"CONFLICT:{conflictResult.Value.Truck.PlateNumber}";
+        }
+
+        if (conflictResult is not null && force)
+        {
+            var conflictTruck = conflictResult.Value.Truck;
+            conflictTruck.Update(
+                conflictTruck.PlateNumber,
+                conflictTruck.TruckModel,
+                conflictTruck.OwnershipType,
+                null,
+                conflictTruck.IsActive,
+                conflictTruck.DateAcquired);
+            await repository.UpdateAsync(conflictTruck);
+        }
+
+        var truck = truckResult.Value.Truck;
+        truck.Update(
+            truck.PlateNumber,
+            truck.TruckModel,
+            truck.OwnershipType,
+            driverId,
+            truck.IsActive,
+            truck.DateAcquired);
+
+        await repository.UpdateAsync(truck);
+
+        var updated = await repository.GetByIdAsync(truckId);
+        return MapToDetail(updated!.Value.Truck, updated.Value.DriverName);
+    }
+
+    public async Task<Result<TruckDetailDto>> UnassignDriverAsync(Guid truckId, string reason)
+    {
+        var truckResult = await repository.GetByIdAsync(truckId);
+
+        if (truckResult is null)
+        {
+            return "Truck not found.";
+        }
+
+        var truck = truckResult.Value.Truck;
+
+        if (!truck.DriverId.HasValue)
+        {
+            return "No driver is currently assigned to this truck.";
+        }
+
+        truck.Update(
+            truck.PlateNumber,
+            truck.TruckModel,
+            truck.OwnershipType,
+            null,
+            truck.IsActive,
+            truck.DateAcquired);
+
+        await repository.UpdateAsync(truck);
+
+        var updated = await repository.GetByIdAsync(truckId);
+        return MapToDetail(updated!.Value.Truck, updated.Value.DriverName);
+    }
+
     private static TruckDetailDto MapToDetail(Truck t, string? driverName) => new(
         t.Id,
         t.PlateNumber,
