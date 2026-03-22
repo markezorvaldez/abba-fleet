@@ -10,4 +10,6 @@ public interface ITruckService
     Task<Result<TruckDetailDto>> UpdateAsync(Guid id, UpsertTruckRequest request);
     Task<Result<bool>> DeleteAsync(Guid id);
     Task<IReadOnlyList<LookupItem>> GetDriverOptionsAsync();
+    Task<Result<TruckDetailDto>> AssignDriverAsync(Guid truckId, Guid driverId, string reason, bool force = false);
+    Task<Result<TruckDetailDto>> UnassignDriverAsync(Guid truckId, string reason);
 }

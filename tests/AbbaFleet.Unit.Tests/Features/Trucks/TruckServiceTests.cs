@@ -260,4 +260,191 @@ public class TruckServiceTests
         Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
         await _repository.DidNotReceive().DeleteAsync(Arg.Any<Truck>());
     }
+
+    // --- AssignDriverAsync ---
+
+    [Fact]
+    public async Task AssignDriverAsync_NoConflict_AssignsDriverAndReturnsSuccess()
+    {
+        var truckRequest = _fixture.Create<UpsertTruckRequest>();
+        var truck = new Truck(truckRequest.PlateNumber, truckRequest.TruckModel,
+            truckRequest.OwnershipType, null, truckRequest.DateAcquired);
+
+        var driverId = _fixture.Create<Guid>();
+        var driverName = _fixture.Create<string>();
+        var driverLookup = new DriverLookup(driverId, driverName, IsActive: true);
+
+        _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, (string?)null), (truck, driverName));
+        _repository.GetDriverLookupAsync(Arg.Is(driverId)).Returns(driverLookup);
+        _repository.GetByDriverIdAsync(Arg.Is(driverId)).Returns(((Truck, string?)?)null);
+
+        var service = new TruckService(_validator, _repository);
+        var result = await service.AssignDriverAsync(truck.Id, driverId, "Assigning driver", force: false);
+
+        Assert.True(result.Succeeded);
+        await _repository.Received(1).UpdateAsync(Arg.Is<Truck>(t =>
+            t.Id == truck.Id && t.DriverId == driverId));
+    }
+
+    [Fact]
+    public async Task AssignDriverAsync_DriverAlreadyAssignedElsewhere_ReturnsConflictError()
+    {
+        var truckRequest = _fixture.Create<UpsertTruckRequest>();
+        var truck = new Truck(truckRequest.PlateNumber, truckRequest.TruckModel,
+            truckRequest.OwnershipType, null, truckRequest.DateAcquired);
+
+        var driverId = _fixture.Create<Guid>();
+        var driverLookup = new DriverLookup(driverId, _fixture.Create<string>(), IsActive: true);
+        var conflictPlate = _fixture.Create<string>();
+        var conflictTruckRequest = _fixture.Create<UpsertTruckRequest>();
+        var conflictTruck = new Truck(conflictPlate, conflictTruckRequest.TruckModel,
+            conflictTruckRequest.OwnershipType, driverId, conflictTruckRequest.DateAcquired);
+
+        _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, (string?)null));
+        _repository.GetDriverLookupAsync(Arg.Is(driverId)).Returns(driverLookup);
+        _repository.GetByDriverIdAsync(Arg.Is(driverId)).Returns((conflictTruck, (string?)null));
+
+        var service = new TruckService(_validator, _repository);
+        var result = await service.AssignDriverAsync(truck.Id, driverId, "Assigning driver", force: false);
+
+        Assert.False(result.Succeeded);
+        Assert.StartsWith("CONFLICT:", result.Error);
+        Assert.Contains(conflictPlate, result.Error);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Truck>());
+    }
+
+    [Fact]
+    public async Task AssignDriverAsync_ForceReassign_ClearsOldTruckAndAssignsToNew()
+    {
+        var truckRequest = _fixture.Create<UpsertTruckRequest>();
+        var truck = new Truck(truckRequest.PlateNumber, truckRequest.TruckModel,
+            truckRequest.OwnershipType, null, truckRequest.DateAcquired);
+
+        var driverId = _fixture.Create<Guid>();
+        var driverName = _fixture.Create<string>();
+        var driverLookup = new DriverLookup(driverId, driverName, IsActive: true);
+        var conflictTruckRequest = _fixture.Create<UpsertTruckRequest>();
+        var conflictTruck = new Truck(conflictTruckRequest.PlateNumber, conflictTruckRequest.TruckModel,
+            conflictTruckRequest.OwnershipType, driverId, conflictTruckRequest.DateAcquired);
+
+        _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, (string?)null), (truck, driverName));
+        _repository.GetDriverLookupAsync(Arg.Is(driverId)).Returns(driverLookup);
+        _repository.GetByDriverIdAsync(Arg.Is(driverId)).Returns((conflictTruck, (string?)null));
+
+        var service = new TruckService(_validator, _repository);
+        var result = await service.AssignDriverAsync(truck.Id, driverId, "Reassigning", force: true);
+
+        Assert.True(result.Succeeded);
+        await _repository.Received(1).UpdateAsync(Arg.Is<Truck>(t =>
+            t.Id == conflictTruck.Id && t.DriverId == null));
+        await _repository.Received(1).UpdateAsync(Arg.Is<Truck>(t =>
+            t.Id == truck.Id && t.DriverId == driverId));
+    }
+
+    [Fact]
+    public async Task AssignDriverAsync_TruckNotFound_ReturnsFailure()
+    {
+        var id = _fixture.Create<Guid>();
+        _repository.GetByIdAsync(Arg.Is(id)).Returns(((Truck, string?)?)null);
+
+        var service = new TruckService(_validator, _repository);
+        var result = await service.AssignDriverAsync(id, _fixture.Create<Guid>(), "reason");
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Truck>());
+    }
+
+    [Fact]
+    public async Task AssignDriverAsync_DeactivatedDriver_ReturnsFailure()
+    {
+        var truckRequest = _fixture.Create<UpsertTruckRequest>();
+        var truck = new Truck(truckRequest.PlateNumber, truckRequest.TruckModel,
+            truckRequest.OwnershipType, null, truckRequest.DateAcquired);
+
+        var driverId = _fixture.Create<Guid>();
+        var driverLookup = new DriverLookup(driverId, _fixture.Create<string>(), IsActive: false);
+
+        _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, (string?)null));
+        _repository.GetDriverLookupAsync(Arg.Is(driverId)).Returns(driverLookup);
+
+        var service = new TruckService(_validator, _repository);
+        var result = await service.AssignDriverAsync(truck.Id, driverId, "reason");
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("Deactivated", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Truck>());
+    }
+
+    [Fact]
+    public async Task AssignDriverAsync_DriverAlreadyAssignedToThisTruck_ReturnsFailure()
+    {
+        var driverId = _fixture.Create<Guid>();
+        var driverLookup = new DriverLookup(driverId, _fixture.Create<string>(), IsActive: true);
+        var truckRequest = _fixture.Create<UpsertTruckRequest>();
+        var truck = new Truck(truckRequest.PlateNumber, truckRequest.TruckModel,
+            truckRequest.OwnershipType, driverId, truckRequest.DateAcquired);
+
+        _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, driverLookup.FullName));
+        _repository.GetDriverLookupAsync(Arg.Is(driverId)).Returns(driverLookup);
+
+        var service = new TruckService(_validator, _repository);
+        var result = await service.AssignDriverAsync(truck.Id, driverId, "reason");
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("already assigned to this truck", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Truck>());
+    }
+
+    // --- UnassignDriverAsync ---
+
+    [Fact]
+    public async Task UnassignDriverAsync_DriverAssigned_RemovesDriverAndReturnsSuccess()
+    {
+        var driverId = _fixture.Create<Guid>();
+        var truckRequest = _fixture.Create<UpsertTruckRequest>();
+        var truck = new Truck(truckRequest.PlateNumber, truckRequest.TruckModel,
+            truckRequest.OwnershipType, driverId, truckRequest.DateAcquired);
+        var driverName = _fixture.Create<string>();
+
+        _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, driverName), (truck, (string?)null));
+
+        var service = new TruckService(_validator, _repository);
+        var result = await service.UnassignDriverAsync(truck.Id, "Driver left");
+
+        Assert.True(result.Succeeded);
+        await _repository.Received(1).UpdateAsync(Arg.Is<Truck>(t =>
+            t.Id == truck.Id && t.DriverId == null));
+    }
+
+    [Fact]
+    public async Task UnassignDriverAsync_TruckNotFound_ReturnsFailure()
+    {
+        var id = _fixture.Create<Guid>();
+        _repository.GetByIdAsync(Arg.Is(id)).Returns(((Truck, string?)?)null);
+
+        var service = new TruckService(_validator, _repository);
+        var result = await service.UnassignDriverAsync(id, "reason");
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Truck>());
+    }
+
+    [Fact]
+    public async Task UnassignDriverAsync_NoDriverAssigned_ReturnsFailure()
+    {
+        var truckRequest = _fixture.Create<UpsertTruckRequest>();
+        var truck = new Truck(truckRequest.PlateNumber, truckRequest.TruckModel,
+            truckRequest.OwnershipType, null, truckRequest.DateAcquired);
+
+        _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, (string?)null));
+
+        var service = new TruckService(_validator, _repository);
+        var result = await service.UnassignDriverAsync(truck.Id, "reason");
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("No driver", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Truck>());
+    }
 }
