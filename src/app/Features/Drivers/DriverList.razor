@@ -28,7 +28,7 @@
         <MudToggleItem Value="@("Yes")" Text="Reliever" />
         <MudToggleItem Value="@("No")" Text="Non-reliever" />
     </MudToggleGroup>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenAddDialog" Class="mb-1">Add Driver</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenAddDialog">Add Driver</MudButton>
 </MudStack>
 
 <MudTable Items="FilteredDrivers" Hover="true" Striped="true" Loading="_loading" T="DriverSummary"
