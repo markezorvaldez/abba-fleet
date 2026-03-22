@@ -23,7 +23,7 @@ public class DriverTests
         var facebook = _fixture.Create<string>();
         var address = _fixture.Create<string>();
 
-        var driver = Driver.Create(
+        var driver = new Driver(
             $"  {name}  ", $"  {phone}  ",
             $"  {facebook}  ", $"  {address}  ",
             false, _fixture.Create<DateOnly>());
@@ -41,7 +41,7 @@ public class DriverTests
         var phone = _fixture.Create<string>();
         var date = _fixture.Create<DateOnly>();
 
-        var driver = Driver.Create(name, phone, null, null, true, date);
+        var driver = new Driver(name, phone, null, null, true, date);
 
         Assert.True(driver.IsActive);
         Assert.True(driver.IsReliever);
@@ -55,7 +55,7 @@ public class DriverTests
     public void Create_ThrowsOnEmptyFullName(string fullName)
     {
         Assert.Throws<ArgumentException>(() =>
-            Driver.Create(fullName, _fixture.Create<string>(), null, null, false, _fixture.Create<DateOnly>()));
+            new Driver(fullName, _fixture.Create<string>(), null, null, false, _fixture.Create<DateOnly>()));
     }
 
     [Theory]
@@ -64,13 +64,13 @@ public class DriverTests
     public void Create_ThrowsOnEmptyPhoneNumber(string phoneNumber)
     {
         Assert.Throws<ArgumentException>(() =>
-            Driver.Create(_fixture.Create<string>(), phoneNumber, null, null, false, _fixture.Create<DateOnly>()));
+            new Driver(_fixture.Create<string>(), phoneNumber, null, null, false, _fixture.Create<DateOnly>()));
     }
 
     // --- Update ---
 
     private Driver CreateDriver() =>
-        Driver.Create(
+        new Driver(
             _fixture.Create<string>(), _fixture.Create<string>(),
             _fixture.Create<string>(), _fixture.Create<string>(),
             false, _fixture.Create<DateOnly>());

@@ -8,6 +8,9 @@ public static class AppRoutes
     public const string Users = "/users";
     public const string Drivers = "/drivers";
     public const string DriverDetail = "/drivers/{0}";
+    public const string Trucks = "/trucks";
+    public const string TruckDetail = "/trucks/{0}";
 
     public static string DriverDetailFor(Guid id) => string.Format(DriverDetail, id);
+    public static string TruckDetailFor(Guid id) => string.Format(TruckDetail, id);
 }

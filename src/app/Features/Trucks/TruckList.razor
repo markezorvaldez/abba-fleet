@@ -1,0 +1,195 @@
+@page "/trucks"
+@using AbbaFleet.Shared
+@using AbbaFleet.Features.Trucks
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject ITruckService TruckService
+@inject IPermissionService PermissionService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudDialogProvider />
+<MudSnackbarProvider />
+<MudPopoverProvider />
+
+<PageTitle>Trucks — ABBA Fleet</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4">Trucks</MudText>
+
+<MudStack Row="true" Spacing="3" AlignItems="AlignItems.End" Class="mb-4">
+    <MudTextField @bind-Value="_search" Placeholder="Search plate or model..." Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true" Class="flex-grow-1" />
+    <MudToggleGroup T="string" @bind-Value="_ownershipFilter" Style="flex-shrink: 0;">
+        <MudToggleItem Value="@("All")" Text="All" />
+        <MudToggleItem Value="@("Company")" Text="Company" />
+        <MudToggleItem Value="@("Subcontracted")" Text="Subcontracted" />
+    </MudToggleGroup>
+    <MudToggleGroup T="string" @bind-Value="_activeFilter" Style="flex-shrink: 0;">
+        <MudToggleItem Value="@("All")" Text="All" />
+        <MudToggleItem Value="@("Active")" Text="Active" />
+        <MudToggleItem Value="@("Inactive")" Text="Inactive" />
+    </MudToggleGroup>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenAddDialog">Add Truck</MudButton>
+</MudStack>
+
+<MudTable Items="FilteredTrucks" Hover="true" Striped="true" Loading="_loading" T="TruckSummary"
+          OnRowClick="@(args => { if (args.Item is not null) NavigationManager.NavigateTo(AppRoutes.TruckDetailFor(args.Item.Id)); })"
+          RowStyle="cursor: pointer;">
+    <HeaderContent>
+        <MudTh>Plate Number</MudTh>
+        <MudTh>Model</MudTh>
+        <MudTh>Ownership</MudTh>
+        <MudTh>Driver</MudTh>
+        <MudTh>Status</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.PlateNumber</MudTd>
+        <MudTd>@context.TruckModel</MudTd>
+        <MudTd>
+            <MudChip T="string" Size="Size.Small"
+                     Color="@(context.OwnershipType == OwnershipType.CompanyOwned ? Color.Primary : Color.Secondary)">
+                @(context.OwnershipType == OwnershipType.CompanyOwned ? "Company" : "Subcontracted")
+            </MudChip>
+        </MudTd>
+        <MudTd>@(context.DriverName ?? "—")</MudTd>
+        <MudTd>
+            <MudChip T="string" Color="@(context.IsActive ? Color.Success : Color.Default)" Size="Size.Small">
+                @(context.IsActive ? "Active" : "Inactive")
+            </MudChip>
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+<MudDialog @bind-Visible="_dialogVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Add Truck</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_form.PlateNumber" Label="Plate Number" Required="true" Counter="20" MaxLength="20" />
+            <MudTextField @bind-Value="_form.TruckModel" Label="Truck Model" Required="true" Counter="100" MaxLength="100" />
+            <MudSelect T="OwnershipType" @bind-Value="_form.OwnershipType" Label="Ownership Type" Required="true">
+                <MudSelectItem Value="OwnershipType.CompanyOwned">Company Owned</MudSelectItem>
+                <MudSelectItem Value="OwnershipType.Subcontracted">Subcontracted</MudSelectItem>
+            </MudSelect>
+            <MudSelect T="Guid?" @bind-Value="_form.DriverId" Label="Assigned Driver" Clearable="true">
+                @foreach (var driver in _driverOptions)
+                {
+                    <MudSelectItem T="Guid?" Value="@driver.Id">@driver.Label</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField @bind-Value="_form.DateAcquired" Label="Date Acquired" InputType="InputType.Date" Required="true" />
+            <MudCheckBox @bind-Value="_form.IsActive" Label="Active" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateTruck">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<TruckSummary> _trucks = [];
+    private List<LookupItem> _driverOptions = [];
+    private bool _loading = true;
+    private bool _dialogVisible;
+    private string _search = string.Empty;
+    private string _activeFilter = "All";
+    private string _ownershipFilter = "All";
+    private TruckForm _form = new();
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        CloseOnEscapeKey = true
+    };
+
+    private IEnumerable<TruckSummary> FilteredTrucks => _trucks
+        .Where(t => string.IsNullOrEmpty(_search)
+            || t.PlateNumber.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || t.TruckModel.Contains(_search, StringComparison.OrdinalIgnoreCase))
+        .Where(t => _ownershipFilter switch
+        {
+            "Company" => t.OwnershipType == OwnershipType.CompanyOwned,
+            "Subcontracted" => t.OwnershipType == OwnershipType.Subcontracted,
+            _ => true
+        })
+        .Where(t => _activeFilter switch
+        {
+            "Active" => t.IsActive,
+            "Inactive" => !t.IsActive,
+            _ => true
+        });
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await PermissionService.HasAsync(Permission.ManageTrucks))
+        {
+            NavigationManager.NavigateTo(AppRoutes.Dashboard);
+            return;
+        }
+
+        await LoadTrucks();
+    }
+
+    private async Task LoadTrucks()
+    {
+        _loading = true;
+        _trucks = [.. await TruckService.GetAllAsync()];
+        _loading = false;
+    }
+
+    private async Task OpenAddDialog()
+    {
+        _form = new TruckForm();
+        _driverOptions = [.. await TruckService.GetDriverOptionsAsync()];
+        _dialogVisible = true;
+    }
+
+    private void CloseDialog() => _dialogVisible = false;
+
+    private async Task CreateTruck()
+    {
+        if (string.IsNullOrWhiteSpace(_form.PlateNumber) || string.IsNullOrWhiteSpace(_form.TruckModel))
+        {
+            Snackbar.Add("Plate number and truck model are required.", Severity.Warning);
+            return;
+        }
+
+        if (!DateOnly.TryParse(_form.DateAcquired, out var dateAcquired))
+        {
+            Snackbar.Add("Date acquired is required.", Severity.Warning);
+            return;
+        }
+
+        var request = new UpsertTruckRequest(
+            _form.PlateNumber,
+            _form.TruckModel,
+            _form.OwnershipType,
+            _form.DriverId,
+            dateAcquired);
+
+        var result = await TruckService.CreateAsync(request);
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Failed to add truck.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add($"{_form.PlateNumber} added.", Severity.Success);
+        CloseDialog();
+        await LoadTrucks();
+    }
+
+    private sealed class TruckForm
+    {
+        public string PlateNumber { get; set; } = string.Empty;
+        public string TruckModel { get; set; } = string.Empty;
+        public OwnershipType OwnershipType { get; set; } = OwnershipType.CompanyOwned;
+        public Guid? DriverId { get; set; }
+        public bool IsActive { get; set; } = true;
+        public string DateAcquired { get; set; } = DateTime.Today.ToString("yyyy-MM-dd");
+    }
+}
