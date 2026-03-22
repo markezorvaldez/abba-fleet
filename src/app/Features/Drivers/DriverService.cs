@@ -3,7 +3,7 @@ using FluentValidation;
 
 namespace AbbaFleet.Features.Drivers;
 
-public class DriverService(IValidator<Driver> validator, IDriverRepository repository) : IDriverService
+public class DriverService(IValidator<UpsertDriverRequest> validator, IDriverRepository repository) : IDriverService
 {
     public async Task<IReadOnlyList<DriverSummary>> GetAllAsync()
     {
@@ -19,23 +19,25 @@ public class DriverService(IValidator<Driver> validator, IDriverRepository repos
             .ToList();
     }
 
-    public async Task<Result<Driver>> CreateAsync(
-        string fullName,
-        string phoneNumber,
-        string? facebookLink,
-        string? address,
-        bool isReliever,
-        DateOnly dateStarted)
+    public async Task<Result<Driver>> CreateAsync(UpsertDriverRequest request)
     {
-        var result = Driver.TryCreate(validator, fullName, phoneNumber, facebookLink, address, isReliever, dateStarted);
+        var validation = validator.Validate(request);
 
-        if (!result.Succeeded)
+        if (!validation.IsValid)
         {
-            return result;
+            return string.Join(" | ", validation.Errors.Select(e => e.ErrorMessage));
         }
 
-        await repository.AddAsync(result.Value!);
-        return result;
+        var driver = Driver.Create(
+            request.FullName,
+            request.PhoneNumber,
+            request.FacebookLink,
+            request.Address,
+            request.IsReliever,
+            request.DateStarted);
+
+        await repository.AddAsync(driver);
+        return driver;
     }
 
     public async Task<DriverDetailDto?> GetByIdAsync(Guid id)
@@ -50,16 +52,15 @@ public class DriverService(IValidator<Driver> validator, IDriverRepository repos
         return MapToDetail(driver);
     }
 
-    public async Task<Result<DriverDetailDto>> UpdateAsync(
-        Guid id,
-        string fullName,
-        string phoneNumber,
-        string? facebookLink,
-        string? address,
-        bool isActive,
-        bool isReliever,
-        DateOnly dateStarted)
+    public async Task<Result<DriverDetailDto>> UpdateAsync(Guid id, UpsertDriverRequest request)
     {
+        var validation = validator.Validate(request);
+
+        if (!validation.IsValid)
+        {
+            return string.Join(" | ", validation.Errors.Select(e => e.ErrorMessage));
+        }
+
         var driver = await repository.GetByIdAsync(id);
 
         if (driver is null)
@@ -67,12 +68,14 @@ public class DriverService(IValidator<Driver> validator, IDriverRepository repos
             return "Driver not found.";
         }
 
-        var result = driver.TryUpdate(validator, fullName, phoneNumber, facebookLink, address, isActive, isReliever, dateStarted);
-
-        if (!result.Succeeded)
-        {
-            return result.Error!;
-        }
+        driver.Update(
+            request.FullName,
+            request.PhoneNumber,
+            request.FacebookLink,
+            request.Address,
+            request.IsActive,
+            request.IsReliever,
+            request.DateStarted);
 
         await repository.UpdateAsync(driver);
         return MapToDetail(driver);

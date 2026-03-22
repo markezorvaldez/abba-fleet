@@ -228,15 +228,16 @@ else if (_driver is not null)
         var reason = dialogResult.Data as string;
         Logger.LogInformation("Driver {DriverId} edited. Reason: {Reason}", Id, reason);
 
-        var result = await DriverService.UpdateAsync(
-            Id,
+        var request = new UpsertDriverRequest(
             _form.FullName,
             _form.PhoneNumber,
             _form.FacebookLink,
             _form.Address,
-            _form.IsActive,
             _form.IsReliever,
-            dateStarted);
+            dateStarted,
+            _form.IsActive);
+
+        var result = await DriverService.UpdateAsync(Id, request);
 
         if (!result.Succeeded)
         {
