@@ -106,7 +106,16 @@
 
         try
         {
-            var result = await FileService.UploadFileAsync(null, EntityType, EntityId, file);
+            // Buffer the BrowserFileStream in the component (Blazor render context)
+            // to avoid deadlocks when the service reads the stream.
+            const long maxFileSize = 10 * 1024 * 1024;
+            await using var browserStream = file.OpenReadStream(maxFileSize);
+            using var memoryStream = new MemoryStream();
+            await browserStream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+
+            var result = await FileService.UploadFileAsync(
+                null, EntityType, EntityId, memoryStream, file.Name, file.Size, file.ContentType);
 
             if (!result.Succeeded)
             {
