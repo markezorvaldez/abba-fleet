@@ -21,6 +21,7 @@
         [
             new("/users", "Users", Icons.Material.Filled.People, await PermissionService.HasAsync(Permission.ManageUsers)),
             new("/drivers", "Drivers", Icons.Material.Filled.Badge, await PermissionService.HasAsync(Permission.ManageDrivers)),
+            new("/trucks", "Trucks", Icons.Material.Filled.LocalShipping, await PermissionService.HasAsync(Permission.ManageTrucks)),
         ];
     }
 

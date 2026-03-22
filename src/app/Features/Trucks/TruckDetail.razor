@@ -1,0 +1,301 @@
+@page "/trucks/{Id:guid}"
+@using AbbaFleet.Shared
+@using AbbaFleet.Features.Trucks
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject ITruckService TruckService
+@inject IPermissionService PermissionService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ILogger<TruckDetail> Logger
+
+<MudDialogProvider />
+<MudSnackbarProvider />
+<MudPopoverProvider />
+
+<PageTitle>@(_truck?.PlateNumber ?? "Truck") — ABBA Fleet</PageTitle>
+
+@if (_notFound)
+{
+    <MudText Typo="Typo.h5" Class="mb-4">Truck not found</MudText>
+    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
+               OnClick="@(() => NavigationManager.NavigateTo(AppRoutes.Trucks))">
+        Back to Trucks
+    </MudButton>
+}
+else if (_truck is not null)
+{
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       OnClick="@(() => NavigationManager.NavigateTo(AppRoutes.Trucks))" />
+        <MudText Typo="Typo.h5">@_truck.PlateNumber</MudText>
+        <MudChip T="string" Color="@(_truck.IsActive ? Color.Success : Color.Default)" Size="Size.Small">
+            @(_truck.IsActive ? "Active" : "Inactive")
+        </MudChip>
+        <MudChip T="string" Size="Size.Small"
+                 Color="@(_truck.OwnershipType == OwnershipType.CompanyOwned ? Color.Primary : Color.Secondary)">
+            @(_truck.OwnershipType == OwnershipType.CompanyOwned ? "Company Owned" : "Subcontracted")
+        </MudChip>
+        <MudSpacer />
+        @if (!_isEditing)
+        {
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Edit" OnClick="EnterEditMode">
+                Edit
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                       StartIcon="@Icons.Material.Filled.Delete" OnClick="ConfirmDelete">
+                Delete
+            </MudButton>
+        }
+    </MudStack>
+
+    @if (_isEditing)
+    {
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_form.PlateNumber" Label="Plate Number" Required="true"
+                                      Counter="20" MaxLength="20" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_form.TruckModel" Label="Truck Model" Required="true"
+                                      Counter="100" MaxLength="100" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="OwnershipType" @bind-Value="_form.OwnershipType" Label="Ownership Type" Required="true">
+                            <MudSelectItem Value="OwnershipType.CompanyOwned">Company Owned</MudSelectItem>
+                            <MudSelectItem Value="OwnershipType.Subcontracted">Subcontracted</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="Guid?" @bind-Value="_form.DriverId" Label="Assigned Driver" Clearable="true">
+                            @foreach (var driver in _driverOptions)
+                            {
+                                <MudSelectItem T="Guid?" Value="@driver.Id">@driver.Label</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_form.DateAcquired" Label="Date Acquired"
+                                      InputType="InputType.Date" Required="true" />
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudCheckBox @bind-Value="_form.IsActive" Label="Active" />
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+            <MudCardActions>
+                <MudSpacer />
+                <MudButton OnClick="CancelEdit">Cancel</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveEdit">Save</MudButton>
+            </MudCardActions>
+        </MudCard>
+    }
+    else
+    {
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption">Plate Number</MudText>
+                        <MudText>@_truck.PlateNumber</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption">Truck Model</MudText>
+                        <MudText>@_truck.TruckModel</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption">Ownership Type</MudText>
+                        <MudText>@(_truck.OwnershipType == OwnershipType.CompanyOwned ? "Company Owned" : "Subcontracted")</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption">Assigned Driver</MudText>
+                        @if (_truck.DriverId.HasValue && _truck.DriverName is not null)
+                        {
+                            <MudLink Href="@AppRoutes.DriverDetailFor(_truck.DriverId.Value)">@_truck.DriverName</MudLink>
+                        }
+                        else
+                        {
+                            <MudText>—</MudText>
+                        }
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption">Date Acquired</MudText>
+                        <MudText>@_truck.DateAcquired.ToString("dd MMM yyyy")</MudText>
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.caption">Status</MudText>
+                        <MudText>@(_truck.IsActive ? "Active" : "Inactive")</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption">Created</MudText>
+                        <MudText>@_truck.CreatedAt.LocalDateTime.ToString("dd MMM yyyy h:mm tt")</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption">Last Updated</MudText>
+                        <MudText>@_truck.UpdatedAt.LocalDateTime.ToString("dd MMM yyyy h:mm tt")</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+    }
+
+    <MudTabs Elevation="1" Rounded="true" Class="mt-4">
+        <MudTabPanel Text="Investment Log">
+            <MudText Class="pa-4" Typo="Typo.body2" Color="Color.Default">Coming soon</MudText>
+        </MudTabPanel>
+        <MudTabPanel Text="Notes">
+            <MudText Class="pa-4" Typo="Typo.body2" Color="Color.Default">Coming soon</MudText>
+        </MudTabPanel>
+        <MudTabPanel Text="Files">
+            <MudText Class="pa-4" Typo="Typo.body2" Color="Color.Default">Coming soon</MudText>
+        </MudTabPanel>
+    </MudTabs>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private TruckDetailDto? _truck;
+    private bool _notFound;
+    private bool _isEditing;
+    private TruckForm _form = new();
+    private List<LookupItem> _driverOptions = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await PermissionService.HasAsync(Permission.ManageTrucks))
+        {
+            NavigationManager.NavigateTo(AppRoutes.Dashboard);
+            return;
+        }
+
+        await LoadTruck();
+    }
+
+    private async Task LoadTruck()
+    {
+        _truck = await TruckService.GetByIdAsync(Id);
+        _notFound = _truck is null;
+    }
+
+    private async Task EnterEditMode()
+    {
+        if (_truck is null)
+        {
+            return;
+        }
+
+        _driverOptions = [.. await TruckService.GetDriverOptionsAsync()];
+        _form = new TruckForm
+        {
+            PlateNumber = _truck.PlateNumber,
+            TruckModel = _truck.TruckModel,
+            OwnershipType = _truck.OwnershipType,
+            DriverId = _truck.DriverId,
+            IsActive = _truck.IsActive,
+            DateAcquired = _truck.DateAcquired.ToString("yyyy-MM-dd")
+        };
+        _isEditing = true;
+    }
+
+    private void CancelEdit() => _isEditing = false;
+
+    private async Task SaveEdit()
+    {
+        if (string.IsNullOrWhiteSpace(_form.PlateNumber) || string.IsNullOrWhiteSpace(_form.TruckModel))
+        {
+            Snackbar.Add("Plate number and truck model are required.", Severity.Warning);
+            return;
+        }
+
+        if (!DateOnly.TryParse(_form.DateAcquired, out var dateAcquired))
+        {
+            Snackbar.Add("Date acquired is required.", Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters<ReasonDialog>
+        {
+            { x => x.Title, "Reason for edit" },
+            { x => x.ConfirmColor, Color.Primary }
+        };
+
+        var dialog = await DialogService.ShowAsync<ReasonDialog>("Edit Reason", parameters);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult is null || dialogResult.Canceled)
+        {
+            return;
+        }
+
+        var reason = dialogResult.Data as string;
+        Logger.LogInformation("Truck {TruckId} edited. Reason: {Reason}", Id, reason);
+
+        var request = new UpsertTruckRequest(
+            _form.PlateNumber,
+            _form.TruckModel,
+            _form.OwnershipType,
+            _form.DriverId,
+            dateAcquired,
+            _form.IsActive);
+
+        var result = await TruckService.UpdateAsync(Id, request);
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Failed to update truck.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add("Truck updated.", Severity.Success);
+        _isEditing = false;
+        await LoadTruck();
+    }
+
+    private async Task ConfirmDelete()
+    {
+        var parameters = new DialogParameters<ReasonDialog>
+        {
+            { x => x.Title, "Reason for deletion" },
+            { x => x.WarningText, "This action cannot be undone. The truck will be permanently deleted." },
+            { x => x.ConfirmColor, Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ReasonDialog>("Delete Truck", parameters);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult is null || dialogResult.Canceled)
+        {
+            return;
+        }
+
+        var reason = dialogResult.Data as string;
+        Logger.LogInformation("Truck {TruckId} deleted. Reason: {Reason}", Id, reason);
+
+        var result = await TruckService.DeleteAsync(Id);
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Failed to delete truck.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add("Truck deleted.", Severity.Success);
+        NavigationManager.NavigateTo(AppRoutes.Trucks);
+    }
+
+    private sealed class TruckForm
+    {
+        public string PlateNumber { get; set; } = string.Empty;
+        public string TruckModel { get; set; } = string.Empty;
+        public OwnershipType OwnershipType { get; set; } = OwnershipType.CompanyOwned;
+        public Guid? DriverId { get; set; }
+        public bool IsActive { get; set; } = true;
+        public string DateAcquired { get; set; } = DateTime.Today.ToString("yyyy-MM-dd");
+    }
+}

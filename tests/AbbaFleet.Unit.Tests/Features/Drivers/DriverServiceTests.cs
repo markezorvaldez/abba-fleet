@@ -71,8 +71,8 @@ public class DriverServiceTests
 
         var drivers = new List<Driver>
         {
-            Driver.Create(name1, phone1, null, null, false, date1),
-            Driver.Create(name2, phone2, null, null, true, date2)
+            new Driver(name1, phone1, null, null, false, date1),
+            new Driver(name2, phone2, null, null, true, date2)
         };
         _repository.GetAllAsync().Returns(drivers);
 
@@ -91,7 +91,7 @@ public class DriverServiceTests
     public async Task GetByIdAsync_DriverExists_ReturnsMappedDetail()
     {
         var request = _fixture.Create<UpsertDriverRequest>();
-        var driver = Driver.Create(
+        var driver = new Driver(
             request.FullName, request.PhoneNumber,
             request.FacebookLink, request.Address,
             request.IsReliever, request.DateStarted);
@@ -126,7 +126,7 @@ public class DriverServiceTests
     public async Task UpdateAsync_ValidInput_ReturnsSuccessAndCallsRepository()
     {
         var createRequest = _fixture.Create<UpsertDriverRequest>();
-        var driver = Driver.Create(
+        var driver = new Driver(
             createRequest.FullName, createRequest.PhoneNumber,
             null, null, false, createRequest.DateStarted);
         _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
@@ -190,7 +190,7 @@ public class DriverServiceTests
     public async Task DeleteAsync_DriverExists_ReturnsSuccessAndCallsRepository()
     {
         var request = _fixture.Create<UpsertDriverRequest>();
-        var driver = Driver.Create(
+        var driver = new Driver(
             request.FullName, request.PhoneNumber,
             null, null, false, request.DateStarted);
         _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);

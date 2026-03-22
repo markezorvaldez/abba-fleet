@@ -15,7 +15,7 @@ public class Driver
 
     private Driver() { } // EF Core
 
-    public static Driver Create(
+    public Driver(
         string fullName,
         string phoneNumber,
         string? facebookLink,
@@ -29,19 +29,16 @@ public class Driver
         ArgumentException.ThrowIfNullOrWhiteSpace(trimmedName, nameof(fullName));
         ArgumentException.ThrowIfNullOrWhiteSpace(trimmedPhone, nameof(phoneNumber));
 
-        return new Driver
-        {
-            Id = Guid.NewGuid(),
-            FullName = trimmedName,
-            PhoneNumber = trimmedPhone,
-            FacebookLink = facebookLink?.Trim(),
-            Address = address?.Trim(),
-            IsReliever = isReliever,
-            DateStarted = dateStarted,
-            IsActive = true,
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
-        };
+        Id = Guid.NewGuid();
+        FullName = trimmedName;
+        PhoneNumber = trimmedPhone;
+        FacebookLink = facebookLink?.Trim();
+        Address = address?.Trim();
+        IsReliever = isReliever;
+        DateStarted = dateStarted;
+        IsActive = true;
+        CreatedAt = DateTimeOffset.UtcNow;
+        UpdatedAt = DateTimeOffset.UtcNow;
     }
 
     public void Update(

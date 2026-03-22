@@ -28,7 +28,7 @@ public class DriverService(IValidator<UpsertDriverRequest> validator, IDriverRep
             return string.Join(" | ", validation.Errors.Select(e => e.ErrorMessage));
         }
 
-        var driver = Driver.Create(
+        var driver = new Driver(
             request.FullName,
             request.PhoneNumber,
             request.FacebookLink,
