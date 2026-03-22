@@ -61,6 +61,7 @@ builder.Services.AddDataProtection()
     .PersistKeysToDbContext<AppDbContext>();
 
 builder.Services.AddMudServices();
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHostedService<MigrationHostedService>();
 builder.Services.AddHostedService<AdminSeedService>();
 
