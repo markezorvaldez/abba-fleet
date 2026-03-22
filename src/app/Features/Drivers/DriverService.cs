@@ -3,7 +3,7 @@ using FluentValidation;
 
 namespace AbbaFleet.Features.Drivers;
 
-public class DriverService(IValidator<Driver> validator, IDriverRepository repository) : IDriverService
+public class DriverService(IValidator<UpsertDriverRequest> validator, IDriverRepository repository) : IDriverService
 {
     public async Task<IReadOnlyList<DriverSummary>> GetAllAsync()
     {
@@ -19,22 +19,24 @@ public class DriverService(IValidator<Driver> validator, IDriverRepository repos
             .ToList();
     }
 
-    public async Task<Result<Driver>> CreateAsync(
-        string fullName,
-        string phoneNumber,
-        string? facebookLink,
-        string? address,
-        bool isReliever,
-        DateOnly dateStarted)
+    public async Task<Result<Driver>> CreateAsync(UpsertDriverRequest request)
     {
-        var result = Driver.TryCreate(validator, fullName, phoneNumber, facebookLink, address, isReliever, dateStarted);
+        var validation = validator.Validate(request);
 
-        if (!result.Succeeded)
+        if (!validation.IsValid)
         {
-            return result;
+            return string.Join(" | ", validation.Errors.Select(e => e.ErrorMessage));
         }
 
-        await repository.AddAsync(result.Value!);
-        return result;
+        var driver = Driver.Create(
+            request.FullName,
+            request.PhoneNumber,
+            request.FacebookLink,
+            request.Address,
+            request.IsReliever,
+            request.DateStarted);
+
+        await repository.AddAsync(driver);
+        return driver;
     }
 }

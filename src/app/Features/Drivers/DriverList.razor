@@ -150,13 +150,15 @@
             return;
         }
 
-        var result = await DriverService.CreateAsync(
+        var request = new UpsertDriverRequest(
             _form.FullName,
             _form.PhoneNumber,
             _form.FacebookLink,
             _form.Address,
             _form.IsReliever,
             dateStarted);
+
+        var result = await DriverService.CreateAsync(request);
 
         if (!result.Succeeded)
         {

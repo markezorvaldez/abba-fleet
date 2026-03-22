@@ -2,13 +2,13 @@ using FluentValidation;
 
 namespace AbbaFleet.Features.Drivers;
 
-public class DriverValidator : AbstractValidator<Driver>
+public class DriverValidator : AbstractValidator<UpsertDriverRequest>
 {
     public DriverValidator()
     {
-        RuleFor(d => d.FullName).NotEmpty().MaximumLength(100);
-        RuleFor(d => d.PhoneNumber).NotEmpty().MaximumLength(100);
-        RuleFor(d => d.FacebookLink).MaximumLength(100).When(d => d.FacebookLink is not null);
-        RuleFor(d => d.Address).MaximumLength(100).When(d => d.Address is not null);
+        RuleFor(r => r.FullName).NotEmpty().MaximumLength(100);
+        RuleFor(r => r.PhoneNumber).NotEmpty().MaximumLength(100);
+        RuleFor(r => r.FacebookLink).MaximumLength(100).When(r => r.FacebookLink is not null);
+        RuleFor(r => r.Address).MaximumLength(100).When(r => r.Address is not null);
     }
 }

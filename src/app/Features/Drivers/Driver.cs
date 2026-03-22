@@ -1,6 +1,3 @@
-using AbbaFleet.Shared;
-using FluentValidation;
-
 namespace AbbaFleet.Features.Drivers;
 
 public class Driver
@@ -18,8 +15,7 @@ public class Driver
 
     private Driver() { } // EF Core
 
-    public static Result<Driver> TryCreate(
-        IValidator<Driver> validator,
+    public static Driver Create(
         string fullName,
         string phoneNumber,
         string? facebookLink,
@@ -27,11 +23,17 @@ public class Driver
         bool isReliever,
         DateOnly dateStarted)
     {
-        var driver = new Driver
+        var trimmedName = fullName.Trim();
+        var trimmedPhone = phoneNumber.Trim();
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(trimmedName, nameof(fullName));
+        ArgumentException.ThrowIfNullOrWhiteSpace(trimmedPhone, nameof(phoneNumber));
+
+        return new Driver
         {
             Id = Guid.NewGuid(),
-            FullName = fullName.Trim(),
-            PhoneNumber = phoneNumber.Trim(),
+            FullName = trimmedName,
+            PhoneNumber = trimmedPhone,
             FacebookLink = facebookLink?.Trim(),
             Address = address?.Trim(),
             IsReliever = isReliever,
@@ -40,14 +42,5 @@ public class Driver
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };
-
-        var validation = validator.Validate(driver);
-
-        if (!validation.IsValid)
-        {
-            return string.Join(" | ", validation.Errors.Select(e => e.ErrorMessage));
-        }
-
-        return driver;
     }
 }
