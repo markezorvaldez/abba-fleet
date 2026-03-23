@@ -71,7 +71,6 @@ builder.Services.Configure<FormOptions>(options =>
 });
 
 builder.Services.AddHostedService<MigrationHostedService>();
-builder.Services.AddHostedService<AdminSeedService>();
 
 builder.Host.UseLamar(registry =>
 {
