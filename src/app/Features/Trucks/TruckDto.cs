@@ -1,5 +1,7 @@
 namespace AbbaFleet.Features.Trucks;
 
+public sealed record DriverLookup(Guid Id, string FullName, bool IsActive);
+
 public sealed record TruckSummary(
     Guid Id,
     string PlateNumber,

@@ -11,4 +11,6 @@ public interface ITruckRepository
     Task DeleteAsync(Truck truck);
     Task<bool> ExistsWithPlateNumberAsync(string plateNumber, Guid? excludeId = null);
     Task<IReadOnlyList<LookupItem>> GetActiveDriverOptionsAsync();
+    Task<(Truck Truck, string? DriverName)?> GetByDriverIdAsync(Guid driverId);
+    Task<DriverLookup?> GetDriverLookupAsync(Guid driverId);
 }

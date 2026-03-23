@@ -8,13 +8,27 @@ namespace AbbaFleet.Infrastructure;
 
 public class PermissionService(
     IServiceProvider serviceProvider,
-    AuthenticationStateProvider authStateProvider) : IPermissionService
+    AuthenticationStateProvider authStateProvider,
+    TimeProvider timeProvider) : IPermissionService
 {
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+
     private Task<IReadOnlySet<Permission>>? _loadTask;
+    private DateTimeOffset? _loadedAt;
 
     public async Task<bool> HasAsync(Permission permission)
     {
-        _loadTask ??= LoadPermissionsAsync();
+        if (_loadedAt is not null && timeProvider.GetUtcNow() - _loadedAt.Value > CacheTtl)
+        {
+            _loadTask = null;
+        }
+
+        if (_loadTask is null)
+        {
+            _loadedAt = timeProvider.GetUtcNow();
+            _loadTask = LoadPermissionsAsync();
+        }
+
         var permissions = await _loadTask;
         return permissions.Contains(permission);
     }

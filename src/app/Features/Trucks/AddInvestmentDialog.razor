@@ -1,0 +1,62 @@
+@using AbbaFleet.Features.Trucks
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudSelect T="InvestmentType?" @bind-Value="_type" Label="Type" Required="true">
+                <MudSelectItem T="InvestmentType?" Value="InvestmentType.Purchase">Purchase</MudSelectItem>
+                <MudSelectItem T="InvestmentType?" Value="InvestmentType.Repair">Repair</MudSelectItem>
+                <MudSelectItem T="InvestmentType?" Value="InvestmentType.Upgrade">Upgrade</MudSelectItem>
+                <MudSelectItem T="InvestmentType?" Value="InvestmentType.Other">Other</MudSelectItem>
+            </MudSelect>
+
+            <MudNumericField T="decimal" @bind-Value="_amount" Label="Amount (R)"
+                             Min="0.01m" Format="F2" Required="true" />
+
+            <MudTextField @bind-Value="_dateString" Label="Date"
+                          InputType="InputType.Date" Required="true" />
+
+            <MudTextField @bind-Value="_description" Label="Description (optional)"
+                          Lines="3" MaxLength="500" Counter="500" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@(!IsValid)" OnClick="Save">
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private InvestmentType? _type;
+    private decimal _amount;
+    private string _dateString = DateTime.Today.ToString("yyyy-MM-dd");
+    private string? _description;
+
+    private bool IsValid =>
+        _type.HasValue &&
+        _amount > 0 &&
+        DateOnly.TryParse(_dateString, out _);
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Save()
+    {
+        if (!IsValid || !DateOnly.TryParse(_dateString, out var date))
+        {
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new AddInvestmentRequest(
+            _type!.Value,
+            _amount,
+            date,
+            string.IsNullOrWhiteSpace(_description) ? null : _description.Trim())));
+    }
+}
