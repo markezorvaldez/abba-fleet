@@ -16,6 +16,7 @@ public class TruckServiceTests
     {
         var fixture = new Fixture();
         fixture.Register(() => DateOnly.FromDateTime(fixture.Create<DateTime>()));
+
         return fixture;
     }
 
@@ -31,19 +32,25 @@ public class TruckServiceTests
     {
         var request = _fixture.Create<UpsertTruckRequest>();
 
-        _validator.Validate(Arg.Is<UpsertTruckRequest>(r =>
-            r.PlateNumber == request.PlateNumber && r.TruckModel == request.TruckModel))
+        _validator.ValidateAsync(
+                Arg.Is<UpsertTruckRequest>(r =>
+                    r.PlateNumber == request.PlateNumber && r.TruckModel == request.TruckModel),
+                Arg.Any<CancellationToken>())
             .Returns(new ValidationResult());
+
         _repository.ExistsWithPlateNumberAsync(Arg.Is(request.PlateNumber), Arg.Is<Guid?>(x => x == null))
-            .Returns(false);
+                   .Returns(false);
 
         var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
         var result = await service.CreateAsync(request);
 
         Assert.True(result.Succeeded);
         Assert.Equal(request.PlateNumber, result.Value!.PlateNumber);
-        await _repository.Received(1).AddAsync(Arg.Is<Truck>(t =>
-            t.PlateNumber == request.PlateNumber && t.TruckModel == request.TruckModel));
+
+        await _repository.Received(1)
+                         .AddAsync(
+                             Arg.Is<Truck>(t =>
+                                 t.PlateNumber == request.PlateNumber && t.TruckModel == request.TruckModel));
     }
 
     [Fact]
@@ -52,8 +59,11 @@ public class TruckServiceTests
         var request = _fixture.Create<UpsertTruckRequest>();
         var errorMessage = _fixture.Create<string>();
 
-        _validator.Validate(Arg.Is<UpsertTruckRequest>(r =>
-            r.PlateNumber == request.PlateNumber && r.TruckModel == request.TruckModel))
+        _validator.ValidateAsync(
+                Arg.Is<UpsertTruckRequest>(r =>
+                    r.PlateNumber == request.PlateNumber &&
+                    r.TruckModel == request.TruckModel),
+                Arg.Any<CancellationToken>())
             .Returns(new ValidationResult([new ValidationFailure("PlateNumber", errorMessage)]));
 
         var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
@@ -69,11 +79,14 @@ public class TruckServiceTests
     {
         var request = _fixture.Create<UpsertTruckRequest>();
 
-        _validator.Validate(Arg.Is<UpsertTruckRequest>(r =>
-            r.PlateNumber == request.PlateNumber))
+        _validator.ValidateAsync(
+                Arg.Is<UpsertTruckRequest>(r =>
+                    r.PlateNumber == request.PlateNumber),
+                Arg.Any<CancellationToken>())
             .Returns(new ValidationResult());
+
         _repository.ExistsWithPlateNumberAsync(Arg.Is(request.PlateNumber), null)
-            .Returns(true);
+                   .Returns(true);
 
         var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
         var result = await service.CreateAsync(request);
@@ -81,6 +94,112 @@ public class TruckServiceTests
         Assert.False(result.Succeeded);
         Assert.Contains("plate number", result.Error, StringComparison.OrdinalIgnoreCase);
         await _repository.DidNotReceive().AddAsync(Arg.Any<Truck>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_DriverAlreadyAssignedElsewhere_ReturnsConflictError()
+    {
+        var driverId = _fixture.Create<Guid>();
+
+        var request = _fixture.Build<UpsertTruckRequest>()
+                              .With(r => r.DriverId, driverId)
+                              .Create();
+
+        var conflictPlate = _fixture.Create<string>();
+
+        var conflictTruck = new Truck(
+            conflictPlate,
+            _fixture.Create<string>(),
+            OwnershipType.CompanyOwned,
+            driverId,
+            _fixture.Create<DateOnly>());
+
+        _validator.ValidateAsync(
+                Arg.Is<UpsertTruckRequest>(r =>
+                    r.PlateNumber == request.PlateNumber),
+                Arg.Any<CancellationToken>())
+            .Returns(new ValidationResult());
+
+        _repository.ExistsWithPlateNumberAsync(Arg.Is(request.PlateNumber), Arg.Is<Guid?>(x => x == null))
+                   .Returns(false);
+
+        _repository.GetByDriverIdAsync(Arg.Is(driverId))
+                   .Returns((conflictTruck, (string?)null));
+
+        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var result = await service.CreateAsync(request);
+
+        Assert.False(result.Succeeded);
+        Assert.StartsWith("CONFLICT:", result.Error);
+        Assert.Contains(conflictPlate, result.Error);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Truck>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_DriverConflictWithForce_UnassignsOldTruckAndCreatesNew()
+    {
+        var driverId = _fixture.Create<Guid>();
+
+        var request = _fixture.Build<UpsertTruckRequest>()
+                              .With(r => r.DriverId, driverId)
+                              .Create();
+
+        var conflictTruck = new Truck(
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            OwnershipType.CompanyOwned,
+            driverId,
+            _fixture.Create<DateOnly>());
+
+        _validator.ValidateAsync(
+                Arg.Is<UpsertTruckRequest>(r =>
+                    r.PlateNumber == request.PlateNumber),
+                Arg.Any<CancellationToken>())
+            .Returns(new ValidationResult());
+
+        _repository.ExistsWithPlateNumberAsync(Arg.Is(request.PlateNumber), Arg.Is<Guid?>(x => x == null))
+                   .Returns(false);
+
+        _repository.GetByDriverIdAsync(Arg.Is(driverId))
+                   .Returns((conflictTruck, (string?)null));
+
+        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var result = await service.CreateAsync(request, forceDriverAssignment: true);
+
+        Assert.True(result.Succeeded);
+
+        await _repository.Received(1)
+                         .UpdateAsync(
+                             Arg.Is<Truck>(t =>
+                                 t.Id == conflictTruck.Id && t.DriverId == null));
+
+        await _repository.Received(1)
+                         .AddAsync(
+                             Arg.Is<Truck>(t =>
+                                 t.PlateNumber == request.PlateNumber && t.DriverId == driverId));
+    }
+
+    [Fact]
+    public async Task CreateAsync_NoDriverId_SkipsConflictCheck()
+    {
+        var request = _fixture.Build<UpsertTruckRequest>()
+                              .With(r => r.DriverId, (Guid?)null)
+                              .Create();
+
+        _validator.ValidateAsync(
+                Arg.Is<UpsertTruckRequest>(r =>
+                    r.PlateNumber == request.PlateNumber),
+                Arg.Any<CancellationToken>())
+            .Returns(new ValidationResult());
+
+        _repository.ExistsWithPlateNumberAsync(Arg.Is(request.PlateNumber), Arg.Is<Guid?>(x => x == null))
+                   .Returns(false);
+
+        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var result = await service.CreateAsync(request);
+
+        Assert.True(result.Succeeded);
+        await _repository.DidNotReceive().GetByDriverIdAsync(Arg.Any<Guid>());
     }
 
     // --- GetAllAsync ---
@@ -99,6 +218,7 @@ public class TruckServiceTests
             (new Truck(plate1, model1, OwnershipType.CompanyOwned, null, _fixture.Create<DateOnly>()), null),
             (new Truck(plate2, model2, OwnershipType.Subcontracted, _fixture.Create<Guid>(), _fixture.Create<DateOnly>()), driverName)
         };
+
         _repository.GetAllAsync().Returns(trucks);
 
         var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
@@ -117,9 +237,14 @@ public class TruckServiceTests
     public async Task GetByIdAsync_TruckExists_ReturnsMappedDetail()
     {
         var request = _fixture.Create<UpsertTruckRequest>();
+
         var truck = new Truck(
-            request.PlateNumber, request.TruckModel,
-            request.OwnershipType, request.DriverId, request.DateAcquired);
+            request.PlateNumber,
+            request.TruckModel,
+            request.OwnershipType,
+            request.DriverId,
+            request.DateAcquired);
+
         var driverName = _fixture.Create<string>();
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, driverName));
 
@@ -150,25 +275,38 @@ public class TruckServiceTests
     public async Task UpdateAsync_ValidInput_ReturnsSuccessAndCallsRepository()
     {
         var createRequest = _fixture.Create<UpsertTruckRequest>();
+
         var truck = new Truck(
-            createRequest.PlateNumber, createRequest.TruckModel,
-            createRequest.OwnershipType, null, createRequest.DateAcquired);
+            createRequest.PlateNumber,
+            createRequest.TruckModel,
+            createRequest.OwnershipType,
+            null,
+            createRequest.DateAcquired);
+
         var driverName = _fixture.Create<string>();
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, driverName));
 
         var updateRequest = _fixture.Create<UpsertTruckRequest>();
-        _validator.Validate(Arg.Is<UpsertTruckRequest>(r =>
-            r.PlateNumber == updateRequest.PlateNumber && r.TruckModel == updateRequest.TruckModel))
+
+        _validator.ValidateAsync(
+                Arg.Is<UpsertTruckRequest>(r =>
+                    r.PlateNumber == updateRequest.PlateNumber &&
+                    r.TruckModel == updateRequest.TruckModel),
+                Arg.Any<CancellationToken>())
             .Returns(new ValidationResult());
+
         _repository.ExistsWithPlateNumberAsync(Arg.Is(updateRequest.PlateNumber), Arg.Is<Guid?>(truck.Id))
-            .Returns(false);
+                   .Returns(false);
 
         var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
         var result = await service.UpdateAsync(truck.Id, updateRequest);
 
         Assert.True(result.Succeeded);
-        await _repository.Received(1).UpdateAsync(Arg.Is<Truck>(t =>
-            t.PlateNumber == updateRequest.PlateNumber && t.TruckModel == updateRequest.TruckModel));
+
+        await _repository.Received(1)
+                         .UpdateAsync(
+                             Arg.Is<Truck>(t =>
+                                 t.PlateNumber == updateRequest.PlateNumber && t.TruckModel == updateRequest.TruckModel));
     }
 
     [Fact]
@@ -176,9 +314,14 @@ public class TruckServiceTests
     {
         var id = _fixture.Create<Guid>();
         var request = _fixture.Create<UpsertTruckRequest>();
-        _validator.Validate(Arg.Is<UpsertTruckRequest>(r =>
-            r.PlateNumber == request.PlateNumber && r.TruckModel == request.TruckModel))
+
+        _validator.ValidateAsync(
+                Arg.Is<UpsertTruckRequest>(r =>
+                    r.PlateNumber == request.PlateNumber &&
+                    r.TruckModel == request.TruckModel),
+                Arg.Any<CancellationToken>())
             .Returns(new ValidationResult());
+
         _repository.GetByIdAsync(Arg.Is(id)).Returns(((Truck, string?)?)null);
 
         var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
@@ -193,17 +336,26 @@ public class TruckServiceTests
     public async Task UpdateAsync_DuplicatePlateNumber_ReturnsFailure()
     {
         var createRequest = _fixture.Create<UpsertTruckRequest>();
+
         var truck = new Truck(
-            createRequest.PlateNumber, createRequest.TruckModel,
-            createRequest.OwnershipType, null, createRequest.DateAcquired);
+            createRequest.PlateNumber,
+            createRequest.TruckModel,
+            createRequest.OwnershipType,
+            null,
+            createRequest.DateAcquired);
+
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, null));
 
         var updateRequest = _fixture.Create<UpsertTruckRequest>();
-        _validator.Validate(Arg.Is<UpsertTruckRequest>(r =>
-            r.PlateNumber == updateRequest.PlateNumber))
+
+        _validator.ValidateAsync(
+                Arg.Is<UpsertTruckRequest>(r =>
+                    r.PlateNumber == updateRequest.PlateNumber),
+                Arg.Any<CancellationToken>())
             .Returns(new ValidationResult());
+
         _repository.ExistsWithPlateNumberAsync(Arg.Is(updateRequest.PlateNumber), Arg.Is<Guid?>(truck.Id))
-            .Returns(true);
+                   .Returns(true);
 
         var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
         var result = await service.UpdateAsync(truck.Id, updateRequest);
@@ -219,8 +371,11 @@ public class TruckServiceTests
         var request = _fixture.Create<UpsertTruckRequest>();
         var errorMessage = _fixture.Create<string>();
 
-        _validator.Validate(Arg.Is<UpsertTruckRequest>(r =>
-            r.PlateNumber == request.PlateNumber && r.TruckModel == request.TruckModel))
+        _validator.ValidateAsync(
+                Arg.Is<UpsertTruckRequest>(r =>
+                    r.PlateNumber == request.PlateNumber &&
+                    r.TruckModel == request.TruckModel),
+                Arg.Any<CancellationToken>())
             .Returns(new ValidationResult([new ValidationFailure("PlateNumber", errorMessage)]));
 
         var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
@@ -232,15 +387,158 @@ public class TruckServiceTests
         await _repository.DidNotReceive().GetByIdAsync(Arg.Any<Guid>());
     }
 
+    [Fact]
+    public async Task UpdateAsync_DriverAlreadyAssignedElsewhere_ReturnsConflictError()
+    {
+        var driverId = _fixture.Create<Guid>();
+
+        var truck = new Truck(
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            OwnershipType.CompanyOwned,
+            null,
+            _fixture.Create<DateOnly>());
+
+        _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, (string?)null));
+
+        var conflictPlate = _fixture.Create<string>();
+
+        var conflictTruck = new Truck(
+            conflictPlate,
+            _fixture.Create<string>(),
+            OwnershipType.CompanyOwned,
+            driverId,
+            _fixture.Create<DateOnly>());
+
+        var request = _fixture.Build<UpsertTruckRequest>()
+                              .With(r => r.DriverId, driverId)
+                              .Create();
+
+        _validator.ValidateAsync(
+                Arg.Is<UpsertTruckRequest>(r =>
+                    r.PlateNumber == request.PlateNumber),
+                Arg.Any<CancellationToken>())
+            .Returns(new ValidationResult());
+
+        _repository.ExistsWithPlateNumberAsync(Arg.Is(request.PlateNumber), Arg.Is<Guid?>(truck.Id))
+                   .Returns(false);
+
+        _repository.GetByDriverIdAsync(Arg.Is(driverId))
+                   .Returns((conflictTruck, (string?)null));
+
+        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var result = await service.UpdateAsync(truck.Id, request);
+
+        Assert.False(result.Succeeded);
+        Assert.StartsWith("CONFLICT:", result.Error);
+        Assert.Contains(conflictPlate, result.Error);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_DriverConflictWithForce_UnassignsOldTruckAndUpdates()
+    {
+        var driverId = _fixture.Create<Guid>();
+        var driverName = _fixture.Create<string>();
+
+        var truck = new Truck(
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            OwnershipType.CompanyOwned,
+            null,
+            _fixture.Create<DateOnly>());
+
+        var conflictTruck = new Truck(
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            OwnershipType.CompanyOwned,
+            driverId,
+            _fixture.Create<DateOnly>());
+
+        var request = _fixture.Build<UpsertTruckRequest>()
+                              .With(r => r.DriverId, driverId)
+                              .Create();
+
+        _validator.ValidateAsync(
+                Arg.Is<UpsertTruckRequest>(r =>
+                    r.PlateNumber == request.PlateNumber),
+                Arg.Any<CancellationToken>())
+            .Returns(new ValidationResult());
+
+        _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, (string?)null), (truck, driverName));
+
+        _repository.ExistsWithPlateNumberAsync(Arg.Is(request.PlateNumber), Arg.Is<Guid?>(truck.Id))
+                   .Returns(false);
+
+        _repository.GetByDriverIdAsync(Arg.Is(driverId))
+                   .Returns((conflictTruck, (string?)null));
+
+        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var result = await service.UpdateAsync(truck.Id, request, forceDriverAssignment: true);
+
+        Assert.True(result.Succeeded);
+
+        await _repository.Received(1)
+                         .UpdateAsync(
+                             Arg.Is<Truck>(t =>
+                                 t.Id == conflictTruck.Id && t.DriverId == null));
+
+        await _repository.Received(1)
+                         .UpdateAsync(
+                             Arg.Is<Truck>(t =>
+                                 t.Id == truck.Id && t.DriverId == driverId));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_SameDriverOnSameTruck_NoConflict()
+    {
+        var driverId = _fixture.Create<Guid>();
+        var driverName = _fixture.Create<string>();
+
+        var truck = new Truck(
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            OwnershipType.CompanyOwned,
+            driverId,
+            _fixture.Create<DateOnly>());
+
+        var request = _fixture.Build<UpsertTruckRequest>()
+                              .With(r => r.DriverId, driverId)
+                              .Create();
+
+        _validator.ValidateAsync(
+                Arg.Is<UpsertTruckRequest>(r =>
+                    r.PlateNumber == request.PlateNumber),
+                Arg.Any<CancellationToken>())
+            .Returns(new ValidationResult());
+
+        _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, driverName));
+
+        _repository.ExistsWithPlateNumberAsync(Arg.Is(request.PlateNumber), Arg.Is<Guid?>(truck.Id))
+                   .Returns(false);
+
+        _repository.GetByDriverIdAsync(Arg.Is(driverId))
+                   .Returns((truck, driverName));
+
+        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var result = await service.UpdateAsync(truck.Id, request);
+
+        Assert.True(result.Succeeded);
+    }
+
     // --- DeleteAsync ---
 
     [Fact]
     public async Task DeleteAsync_TruckExists_ReturnsSuccessAndCallsRepository()
     {
         var request = _fixture.Create<UpsertTruckRequest>();
+
         var truck = new Truck(
-            request.PlateNumber, request.TruckModel,
-            request.OwnershipType, null, request.DateAcquired);
+            request.PlateNumber,
+            request.TruckModel,
+            request.OwnershipType,
+            null,
+            request.DateAcquired);
+
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, null));
 
         var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
@@ -270,9 +568,14 @@ public class TruckServiceTests
     public async Task DeactivateAsync_ActiveTruck_DeactivatesAndCallsRepository()
     {
         var request = _fixture.Create<UpsertTruckRequest>();
+
         var truck = new Truck(
-            request.PlateNumber, request.TruckModel,
-            request.OwnershipType, null, request.DateAcquired);
+            request.PlateNumber,
+            request.TruckModel,
+            request.OwnershipType,
+            null,
+            request.DateAcquired);
+
         var reason = _fixture.Create<string>();
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, null));
 
@@ -280,8 +583,11 @@ public class TruckServiceTests
         var result = await service.DeactivateAsync(truck.Id, reason);
 
         Assert.True(result.Succeeded);
-        await _repository.Received(1).UpdateAsync(Arg.Is<Truck>(t =>
-            t.Id == truck.Id && !t.IsActive));
+
+        await _repository.Received(1)
+                         .UpdateAsync(
+                             Arg.Is<Truck>(t =>
+                                 t.Id == truck.Id && !t.IsActive));
     }
 
     [Fact]
@@ -302,9 +608,14 @@ public class TruckServiceTests
     public async Task DeactivateAsync_AlreadyInactive_ReturnsFailure()
     {
         var request = _fixture.Create<UpsertTruckRequest>();
+
         var truck = new Truck(
-            request.PlateNumber, request.TruckModel,
-            request.OwnershipType, null, request.DateAcquired);
+            request.PlateNumber,
+            request.TruckModel,
+            request.OwnershipType,
+            null,
+            request.DateAcquired);
+
         truck.Update(truck.PlateNumber, truck.TruckModel, truck.OwnershipType, truck.DriverId, isActive: false, truck.DateAcquired);
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, null));
 
@@ -322,9 +633,14 @@ public class TruckServiceTests
     public async Task ReactivateAsync_InactiveTruck_ReactivatesAndCallsRepository()
     {
         var request = _fixture.Create<UpsertTruckRequest>();
+
         var truck = new Truck(
-            request.PlateNumber, request.TruckModel,
-            request.OwnershipType, null, request.DateAcquired);
+            request.PlateNumber,
+            request.TruckModel,
+            request.OwnershipType,
+            null,
+            request.DateAcquired);
+
         truck.Update(truck.PlateNumber, truck.TruckModel, truck.OwnershipType, truck.DriverId, isActive: false, truck.DateAcquired);
         var reason = _fixture.Create<string>();
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, null));
@@ -333,8 +649,11 @@ public class TruckServiceTests
         var result = await service.ReactivateAsync(truck.Id, reason);
 
         Assert.True(result.Succeeded);
-        await _repository.Received(1).UpdateAsync(Arg.Is<Truck>(t =>
-            t.Id == truck.Id && t.IsActive));
+
+        await _repository.Received(1)
+                         .UpdateAsync(
+                             Arg.Is<Truck>(t =>
+                                 t.Id == truck.Id && t.IsActive));
     }
 
     [Fact]
@@ -355,9 +674,14 @@ public class TruckServiceTests
     public async Task ReactivateAsync_AlreadyActive_ReturnsFailure()
     {
         var request = _fixture.Create<UpsertTruckRequest>();
+
         var truck = new Truck(
-            request.PlateNumber, request.TruckModel,
-            request.OwnershipType, null, request.DateAcquired);
+            request.PlateNumber,
+            request.TruckModel,
+            request.OwnershipType,
+            null,
+            request.DateAcquired);
+
         // Truck is active by default after construction
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, null));
 
@@ -375,8 +699,13 @@ public class TruckServiceTests
     public async Task AssignDriverAsync_NoConflict_AssignsDriverAndReturnsSuccess()
     {
         var truckRequest = _fixture.Create<UpsertTruckRequest>();
-        var truck = new Truck(truckRequest.PlateNumber, truckRequest.TruckModel,
-            truckRequest.OwnershipType, null, truckRequest.DateAcquired);
+
+        var truck = new Truck(
+            truckRequest.PlateNumber,
+            truckRequest.TruckModel,
+            truckRequest.OwnershipType,
+            null,
+            truckRequest.DateAcquired);
 
         var driverId = _fixture.Create<Guid>();
         var driverName = _fixture.Create<string>();
@@ -390,23 +719,36 @@ public class TruckServiceTests
         var result = await service.AssignDriverAsync(truck.Id, driverId, "Assigning driver", force: false);
 
         Assert.True(result.Succeeded);
-        await _repository.Received(1).UpdateAsync(Arg.Is<Truck>(t =>
-            t.Id == truck.Id && t.DriverId == driverId));
+
+        await _repository.Received(1)
+                         .UpdateAsync(
+                             Arg.Is<Truck>(t =>
+                                 t.Id == truck.Id && t.DriverId == driverId));
     }
 
     [Fact]
     public async Task AssignDriverAsync_DriverAlreadyAssignedElsewhere_ReturnsConflictError()
     {
         var truckRequest = _fixture.Create<UpsertTruckRequest>();
-        var truck = new Truck(truckRequest.PlateNumber, truckRequest.TruckModel,
-            truckRequest.OwnershipType, null, truckRequest.DateAcquired);
+
+        var truck = new Truck(
+            truckRequest.PlateNumber,
+            truckRequest.TruckModel,
+            truckRequest.OwnershipType,
+            null,
+            truckRequest.DateAcquired);
 
         var driverId = _fixture.Create<Guid>();
         var driverLookup = new DriverLookup(driverId, _fixture.Create<string>(), IsActive: true);
         var conflictPlate = _fixture.Create<string>();
         var conflictTruckRequest = _fixture.Create<UpsertTruckRequest>();
-        var conflictTruck = new Truck(conflictPlate, conflictTruckRequest.TruckModel,
-            conflictTruckRequest.OwnershipType, driverId, conflictTruckRequest.DateAcquired);
+
+        var conflictTruck = new Truck(
+            conflictPlate,
+            conflictTruckRequest.TruckModel,
+            conflictTruckRequest.OwnershipType,
+            driverId,
+            conflictTruckRequest.DateAcquired);
 
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, (string?)null));
         _repository.GetDriverLookupAsync(Arg.Is(driverId)).Returns(driverLookup);
@@ -425,15 +767,25 @@ public class TruckServiceTests
     public async Task AssignDriverAsync_ForceReassign_ClearsOldTruckAndAssignsToNew()
     {
         var truckRequest = _fixture.Create<UpsertTruckRequest>();
-        var truck = new Truck(truckRequest.PlateNumber, truckRequest.TruckModel,
-            truckRequest.OwnershipType, null, truckRequest.DateAcquired);
+
+        var truck = new Truck(
+            truckRequest.PlateNumber,
+            truckRequest.TruckModel,
+            truckRequest.OwnershipType,
+            null,
+            truckRequest.DateAcquired);
 
         var driverId = _fixture.Create<Guid>();
         var driverName = _fixture.Create<string>();
         var driverLookup = new DriverLookup(driverId, driverName, IsActive: true);
         var conflictTruckRequest = _fixture.Create<UpsertTruckRequest>();
-        var conflictTruck = new Truck(conflictTruckRequest.PlateNumber, conflictTruckRequest.TruckModel,
-            conflictTruckRequest.OwnershipType, driverId, conflictTruckRequest.DateAcquired);
+
+        var conflictTruck = new Truck(
+            conflictTruckRequest.PlateNumber,
+            conflictTruckRequest.TruckModel,
+            conflictTruckRequest.OwnershipType,
+            driverId,
+            conflictTruckRequest.DateAcquired);
 
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, (string?)null), (truck, driverName));
         _repository.GetDriverLookupAsync(Arg.Is(driverId)).Returns(driverLookup);
@@ -443,10 +795,16 @@ public class TruckServiceTests
         var result = await service.AssignDriverAsync(truck.Id, driverId, "Reassigning", force: true);
 
         Assert.True(result.Succeeded);
-        await _repository.Received(1).UpdateAsync(Arg.Is<Truck>(t =>
-            t.Id == conflictTruck.Id && t.DriverId == null));
-        await _repository.Received(1).UpdateAsync(Arg.Is<Truck>(t =>
-            t.Id == truck.Id && t.DriverId == driverId));
+
+        await _repository.Received(1)
+                         .UpdateAsync(
+                             Arg.Is<Truck>(t =>
+                                 t.Id == conflictTruck.Id && t.DriverId == null));
+
+        await _repository.Received(1)
+                         .UpdateAsync(
+                             Arg.Is<Truck>(t =>
+                                 t.Id == truck.Id && t.DriverId == driverId));
     }
 
     [Fact]
@@ -467,8 +825,13 @@ public class TruckServiceTests
     public async Task AssignDriverAsync_DeactivatedDriver_ReturnsFailure()
     {
         var truckRequest = _fixture.Create<UpsertTruckRequest>();
-        var truck = new Truck(truckRequest.PlateNumber, truckRequest.TruckModel,
-            truckRequest.OwnershipType, null, truckRequest.DateAcquired);
+
+        var truck = new Truck(
+            truckRequest.PlateNumber,
+            truckRequest.TruckModel,
+            truckRequest.OwnershipType,
+            null,
+            truckRequest.DateAcquired);
 
         var driverId = _fixture.Create<Guid>();
         var driverLookup = new DriverLookup(driverId, _fixture.Create<string>(), IsActive: false);
@@ -490,8 +853,13 @@ public class TruckServiceTests
         var driverId = _fixture.Create<Guid>();
         var driverLookup = new DriverLookup(driverId, _fixture.Create<string>(), IsActive: true);
         var truckRequest = _fixture.Create<UpsertTruckRequest>();
-        var truck = new Truck(truckRequest.PlateNumber, truckRequest.TruckModel,
-            truckRequest.OwnershipType, driverId, truckRequest.DateAcquired);
+
+        var truck = new Truck(
+            truckRequest.PlateNumber,
+            truckRequest.TruckModel,
+            truckRequest.OwnershipType,
+            driverId,
+            truckRequest.DateAcquired);
 
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, driverLookup.FullName));
         _repository.GetDriverLookupAsync(Arg.Is(driverId)).Returns(driverLookup);
@@ -511,8 +879,14 @@ public class TruckServiceTests
     {
         var driverId = _fixture.Create<Guid>();
         var truckRequest = _fixture.Create<UpsertTruckRequest>();
-        var truck = new Truck(truckRequest.PlateNumber, truckRequest.TruckModel,
-            truckRequest.OwnershipType, driverId, truckRequest.DateAcquired);
+
+        var truck = new Truck(
+            truckRequest.PlateNumber,
+            truckRequest.TruckModel,
+            truckRequest.OwnershipType,
+            driverId,
+            truckRequest.DateAcquired);
+
         var driverName = _fixture.Create<string>();
 
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, driverName), (truck, (string?)null));
@@ -521,8 +895,11 @@ public class TruckServiceTests
         var result = await service.UnassignDriverAsync(truck.Id, "Driver left");
 
         Assert.True(result.Succeeded);
-        await _repository.Received(1).UpdateAsync(Arg.Is<Truck>(t =>
-            t.Id == truck.Id && t.DriverId == null));
+
+        await _repository.Received(1)
+                         .UpdateAsync(
+                             Arg.Is<Truck>(t =>
+                                 t.Id == truck.Id && t.DriverId == null));
     }
 
     [Fact]
@@ -543,8 +920,13 @@ public class TruckServiceTests
     public async Task UnassignDriverAsync_NoDriverAssigned_ReturnsFailure()
     {
         var truckRequest = _fixture.Create<UpsertTruckRequest>();
-        var truck = new Truck(truckRequest.PlateNumber, truckRequest.TruckModel,
-            truckRequest.OwnershipType, null, truckRequest.DateAcquired);
+
+        var truck = new Truck(
+            truckRequest.PlateNumber,
+            truckRequest.TruckModel,
+            truckRequest.OwnershipType,
+            null,
+            truckRequest.DateAcquired);
 
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, (string?)null));
 

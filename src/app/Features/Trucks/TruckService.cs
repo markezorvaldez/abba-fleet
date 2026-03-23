@@ -14,32 +14,28 @@ public class TruckService(
     public async Task<IReadOnlyList<TruckSummary>> GetAllAsync()
     {
         var trucks = await repository.GetAllAsync();
+
         return trucks
-            .Select(t => new TruckSummary(
-                t.Truck.Id,
-                t.Truck.PlateNumber,
-                t.Truck.TruckModel,
-                t.Truck.OwnershipType,
-                t.DriverName,
-                t.Truck.IsActive))
-            .ToList();
+               .Select(t => new TruckSummary(
+                   t.Truck.Id,
+                   t.Truck.PlateNumber,
+                   t.Truck.TruckModel,
+                   t.Truck.OwnershipType,
+                   t.DriverName,
+                   t.Truck.IsActive))
+               .ToList();
     }
 
     public async Task<TruckDetailDto?> GetByIdAsync(Guid id)
     {
         var result = await repository.GetByIdAsync(id);
 
-        if (result is null)
-        {
-            return null;
-        }
-
-        return MapToDetail(result.Value.Truck, result.Value.DriverName);
+        return result is null ? null : MapToDetail(result.Value.Truck, result.Value.DriverName);
     }
 
-    public async Task<Result<Truck>> CreateAsync(UpsertTruckRequest request)
+    public async Task<Result<Truck>> CreateAsync(UpsertTruckRequest request, bool forceDriverAssignment = false)
     {
-        var validation = validator.Validate(request);
+        var validation = await validator.ValidateAsync(request);
 
         if (!validation.IsValid)
         {
@@ -51,6 +47,31 @@ public class TruckService(
             return "A truck with this plate number already exists.";
         }
 
+        if (request.DriverId.HasValue)
+        {
+            var conflictResult = await repository.GetByDriverIdAsync(request.DriverId.Value);
+
+            if (conflictResult is not null && !forceDriverAssignment)
+            {
+                return $"CONFLICT:{conflictResult.Value.Truck.PlateNumber}";
+            }
+
+            if (conflictResult is not null && forceDriverAssignment)
+            {
+                var conflictTruck = conflictResult.Value.Truck;
+
+                conflictTruck.Update(
+                    conflictTruck.PlateNumber,
+                    conflictTruck.TruckModel,
+                    conflictTruck.OwnershipType,
+                    null,
+                    conflictTruck.IsActive,
+                    conflictTruck.DateAcquired);
+
+                await repository.UpdateAsync(conflictTruck);
+            }
+        }
+
         var truck = new Truck(
             request.PlateNumber,
             request.TruckModel,
@@ -59,12 +80,13 @@ public class TruckService(
             request.DateAcquired);
 
         await repository.AddAsync(truck);
+
         return truck;
     }
 
-    public async Task<Result<TruckDetailDto>> UpdateAsync(Guid id, UpsertTruckRequest request)
+    public async Task<Result<TruckDetailDto>> UpdateAsync(Guid id, UpsertTruckRequest request, bool forceDriverAssignment = false)
     {
-        var validation = validator.Validate(request);
+        var validation = await validator.ValidateAsync(request);
 
         if (!validation.IsValid)
         {
@@ -83,7 +105,33 @@ public class TruckService(
             return "A truck with this plate number already exists.";
         }
 
+        if (request.DriverId.HasValue)
+        {
+            var conflictResult = await repository.GetByDriverIdAsync(request.DriverId.Value);
+
+            if (conflictResult is not null && conflictResult.Value.Truck.Id != id && !forceDriverAssignment)
+            {
+                return $"CONFLICT:{conflictResult.Value.Truck.PlateNumber}";
+            }
+
+            if (conflictResult is not null && conflictResult.Value.Truck.Id != id && forceDriverAssignment)
+            {
+                var conflictTruck = conflictResult.Value.Truck;
+
+                conflictTruck.Update(
+                    conflictTruck.PlateNumber,
+                    conflictTruck.TruckModel,
+                    conflictTruck.OwnershipType,
+                    null,
+                    conflictTruck.IsActive,
+                    conflictTruck.DateAcquired);
+
+                await repository.UpdateAsync(conflictTruck);
+            }
+        }
+
         var truck = result.Value.Truck;
+
         truck.Update(
             request.PlateNumber,
             request.TruckModel,
@@ -96,6 +144,7 @@ public class TruckService(
 
         // Re-fetch to get updated driver name
         var updated = await repository.GetByIdAsync(id);
+
         return MapToDetail(updated!.Value.Truck, updated.Value.DriverName);
     }
 
@@ -111,6 +160,7 @@ public class TruckService(
         // TODO: When Trip/Expense entities exist, check for associated records before allowing delete.
 
         await repository.DeleteAsync(result.Value.Truck);
+
         return true;
     }
 
@@ -144,6 +194,7 @@ public class TruckService(
             truck.DateAcquired);
 
         await repository.UpdateAsync(truck);
+
         return true;
     }
 
@@ -172,6 +223,7 @@ public class TruckService(
             truck.DateAcquired);
 
         await repository.UpdateAsync(truck);
+
         return true;
     }
 
@@ -211,6 +263,7 @@ public class TruckService(
         if (conflictResult is not null && force)
         {
             var conflictTruck = conflictResult.Value.Truck;
+
             conflictTruck.Update(
                 conflictTruck.PlateNumber,
                 conflictTruck.TruckModel,
@@ -218,10 +271,12 @@ public class TruckService(
                 null,
                 conflictTruck.IsActive,
                 conflictTruck.DateAcquired);
+
             await repository.UpdateAsync(conflictTruck);
         }
 
         var truck = truckResult.Value.Truck;
+
         truck.Update(
             truck.PlateNumber,
             truck.TruckModel,
@@ -233,6 +288,7 @@ public class TruckService(
         await repository.UpdateAsync(truck);
 
         var updated = await repository.GetByIdAsync(truckId);
+
         return MapToDetail(updated!.Value.Truck, updated.Value.DriverName);
     }
 
@@ -263,6 +319,7 @@ public class TruckService(
         await repository.UpdateAsync(truck);
 
         var updated = await repository.GetByIdAsync(truckId);
+
         return MapToDetail(updated!.Value.Truck, updated.Value.DriverName);
     }
 
@@ -270,6 +327,7 @@ public class TruckService(
     {
         var entries = await investmentRepository.GetByTruckIdAsync(truckId);
         var total = await investmentRepository.GetTotalByTruckIdAsync(truckId);
+
         return (entries.Select(MapToInvestmentDto).ToList(), total);
     }
 
@@ -296,12 +354,14 @@ public class TruckService(
 
         var entry = new InvestmentEntry(truckId, request.Type, request.Amount, request.Date, request.Description, userName);
         await investmentRepository.AddAsync(entry);
+
         return MapToInvestmentDto(entry);
     }
 
     private async Task<string?> GetCurrentUserNameAsync()
     {
         var state = await authStateProvider.GetAuthenticationStateAsync();
+
         return state.User.FindFirstValue(ClaimTypes.Name);
     }
 
