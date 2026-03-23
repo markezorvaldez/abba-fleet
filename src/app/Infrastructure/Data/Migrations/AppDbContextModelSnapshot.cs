@@ -230,58 +230,6 @@ namespace AbbaFleet.Infrastructure.Data.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("AbbaFleet.Shared.AttachedFile", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<Guid>("EntityId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("EntityType")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(260)
-                        .HasColumnType("character varying(260)");
-
-                    b.Property<long>("FileSize")
-                        .HasColumnType("bigint");
-
-                    b.Property<Guid?>("NoteId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("StoragePath")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTimeOffset>("UploadedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UploadedBy")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NoteId");
-
-                    b.HasIndex("EntityType", "EntityId");
-
-                    b.ToTable("AttachedFiles");
-                });
-
             modelBuilder.Entity("AbbaFleet.Shared.Note", b =>
                 {
                     b.Property<Guid>("Id")
@@ -484,14 +432,6 @@ namespace AbbaFleet.Infrastructure.Data.Migrations
                     b.HasOne("AbbaFleet.Features.Drivers.Driver", null)
                         .WithMany()
                         .HasForeignKey("DriverId")
-                        .OnDelete(DeleteBehavior.SetNull);
-                });
-
-            modelBuilder.Entity("AbbaFleet.Shared.AttachedFile", b =>
-                {
-                    b.HasOne("AbbaFleet.Shared.Note", null)
-                        .WithMany()
-                        .HasForeignKey("NoteId")
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 

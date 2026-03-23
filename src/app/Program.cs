@@ -104,19 +104,6 @@ app.MapGet("/account/logout", async (SignInManager<ApplicationUser> signInManage
     return Results.Redirect(AppRoutes.Login);
 });
 
-app.MapGet("/api/files/{id:guid}", async (Guid id, IFileService fileService) =>
-{
-    var result = await fileService.DownloadFileAsync(id);
-
-    if (result is null)
-    {
-        return Results.NotFound();
-    }
-
-    var (stream, contentType, fileName) = result.Value;
-    return Results.File(stream, contentType, fileName);
-}).RequireAuthorization();
-
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
