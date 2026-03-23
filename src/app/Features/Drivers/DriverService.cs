@@ -96,6 +96,60 @@ public class DriverService(IValidator<UpsertDriverRequest> validator, IDriverRep
         return true;
     }
 
+    public async Task<Result<bool>> DeactivateAsync(Guid id, string reason)
+    {
+        var driver = await repository.GetByIdAsync(id);
+
+        if (driver is null)
+        {
+            return "Driver not found.";
+        }
+
+        if (!driver.IsActive)
+        {
+            return "Driver is already inactive.";
+        }
+
+        driver.Update(
+            driver.FullName,
+            driver.PhoneNumber,
+            driver.FacebookLink,
+            driver.Address,
+            isActive: false,
+            driver.IsReliever,
+            driver.DateStarted);
+
+        await repository.UpdateAsync(driver);
+        return true;
+    }
+
+    public async Task<Result<bool>> ReactivateAsync(Guid id)
+    {
+        var driver = await repository.GetByIdAsync(id);
+
+        if (driver is null)
+        {
+            return "Driver not found.";
+        }
+
+        if (driver.IsActive)
+        {
+            return "Driver is already active.";
+        }
+
+        driver.Update(
+            driver.FullName,
+            driver.PhoneNumber,
+            driver.FacebookLink,
+            driver.Address,
+            isActive: true,
+            driver.IsReliever,
+            driver.DateStarted);
+
+        await repository.UpdateAsync(driver);
+        return true;
+    }
+
     private static DriverDetailDto MapToDetail(Driver d) => new(
         d.Id,
         d.FullName,

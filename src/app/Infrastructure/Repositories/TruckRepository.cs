@@ -92,4 +92,33 @@ public class TruckRepository(IDbContextFactory<AppDbContext> dbFactory) : ITruck
             .Select(d => new LookupItem(d.Id, d.FullName))
             .ToListAsync();
     }
+
+    public async Task<(Truck Truck, string? DriverName)?> GetByDriverIdAsync(Guid driverId)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var truck = await db.Trucks
+            .Where(t => t.DriverId == driverId)
+            .FirstOrDefaultAsync();
+
+        if (truck is null)
+        {
+            return null;
+        }
+
+        var driverName = await db.Drivers
+            .Where(d => d.Id == driverId)
+            .Select(d => d.FullName)
+            .FirstOrDefaultAsync();
+
+        return (truck, driverName);
+    }
+
+    public async Task<DriverLookup?> GetDriverLookupAsync(Guid driverId)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        return await db.Drivers
+            .Where(d => d.Id == driverId)
+            .Select(d => new DriverLookup(d.Id, d.FullName, d.IsActive))
+            .FirstOrDefaultAsync();
+    }
 }

@@ -1,0 +1,16 @@
+@page "/Error"
+@attribute [AllowAnonymous]
+@layout MainLayout
+
+<PageTitle>Error — ABBA Fleet</PageTitle>
+
+<MudStack Spacing="4" AlignItems="AlignItems.Center" Class="mt-8">
+    <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" Size="Size.Large" Style="font-size: 4rem;" />
+    <MudText Typo="Typo.h5">Something went wrong</MudText>
+    <MudText Typo="Typo.body1" Align="Align.Center">
+        An unexpected error occurred. Please try again, or contact your administrator if the problem persists.
+    </MudText>
+    <MudButton Href="@AppRoutes.Dashboard" Variant="Variant.Filled" Color="Color.Primary">
+        Return to dashboard
+    </MudButton>
+</MudStack>

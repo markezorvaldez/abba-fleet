@@ -7,6 +7,7 @@
 @inject IPermissionService PermissionService
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -84,7 +85,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="CloseDialog">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateTruck">Save</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="() => CreateTruck()">Save</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -149,7 +150,7 @@
 
     private void CloseDialog() => _dialogVisible = false;
 
-    private async Task CreateTruck()
+    private async Task CreateTruck(bool forceDriverAssignment = false)
     {
         if (string.IsNullOrWhiteSpace(_form.PlateNumber) || string.IsNullOrWhiteSpace(_form.TruckModel))
         {
@@ -170,10 +171,32 @@
             _form.DriverId,
             dateAcquired);
 
-        var result = await TruckService.CreateAsync(request);
+        var result = await TruckService.CreateAsync(request, forceDriverAssignment);
 
         if (!result.Succeeded)
         {
+            if (result.Error?.StartsWith("CONFLICT:") == true)
+            {
+                var conflictPlate = result.Error["CONFLICT:".Length..];
+                var driverName = _driverOptions.FirstOrDefault(d => d.Id == _form.DriverId)?.Label ?? "This driver";
+
+                var parameters = new DialogParameters<ConfirmReassignDialog>
+                {
+                    { x => x.DriverName, driverName },
+                    { x => x.ConflictPlateNumber, conflictPlate }
+                };
+
+                var dialog = await DialogService.ShowAsync<ConfirmReassignDialog>("Reassign Driver?", parameters);
+                var dialogResult = await dialog.Result;
+
+                if (dialogResult is not null && !dialogResult.Canceled)
+                {
+                    await CreateTruck(forceDriverAssignment: true);
+                }
+
+                return;
+            }
+
             Snackbar.Add(result.Error ?? "Failed to add truck.", Severity.Error);
             return;
         }

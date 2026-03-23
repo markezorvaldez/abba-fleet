@@ -1,0 +1,205 @@
+@using AbbaFleet.Shared
+@using MudBlazor
+@inject INoteService NoteService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILogger<NotePanel> Logger
+
+<MudStack Class="pa-4" Spacing="3">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h6">Notes</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add" OnClick="AddNote">
+            Add Note
+        </MudButton>
+    </MudStack>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (_notes.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Default">No notes yet.</MudText>
+    }
+    else
+    {
+        @foreach (var note in _notes)
+        {
+            <MudCard Outlined="true">
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+                        <MudText Typo="Typo.subtitle1"><b>@note.Title</b></MudText>
+                        <MudSpacer />
+                        <MudTooltip Text="Edit">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                           OnClick="@(() => EditNote(note))" />
+                        </MudTooltip>
+                        <MudTooltip Text="Delete">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                           Color="Color.Error"
+                                           OnClick="@(() => DeleteNote(note))" />
+                        </MudTooltip>
+                    </MudStack>
+                    <MudText Typo="Typo.body1" Class="mb-2" Style="white-space: pre-wrap;">@note.Body</MudText>
+                    <MudStack Row="true" Spacing="4">
+                        <MudText Typo="Typo.caption" Color="Color.Default">
+                            Created by @note.CreatedBy on @note.CreatedAt.LocalDateTime.ToString("dd MMM yyyy h:mm tt")
+                        </MudText>
+                        @if (note.ModifiedAt.HasValue)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Default">
+                                Modified by @note.ModifiedBy on @note.ModifiedAt.Value.LocalDateTime.ToString("dd MMM yyyy h:mm tt")
+                            </MudText>
+                        }
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+        }
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public NoteEntityType EntityType { get; set; }
+
+    [Parameter]
+    public Guid EntityId { get; set; }
+
+    private List<NoteDto> _notes = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadNotes();
+    }
+
+    private async Task LoadNotes()
+    {
+        _loading = true;
+
+        try
+        {
+            var notes = await NoteService.GetNotesAsync(EntityType, EntityId);
+            _notes = [.. notes];
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load notes for {EntityType} {EntityId}", EntityType, EntityId);
+            Snackbar.Add("Failed to load notes.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task AddNote()
+    {
+        var parameters = new DialogParameters<NoteDialog>
+        {
+            { x => x.Title, "Add Note" }
+        };
+
+        var dialog = await DialogService.ShowAsync<NoteDialog>("Add Note", parameters);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult is null || dialogResult.Canceled)
+        {
+            return;
+        }
+
+        var data = (NoteDialog.NoteDialogResult)dialogResult.Data!;
+        var result = await NoteService.CreateNoteAsync(EntityType, EntityId, data.Title, data.Body);
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Failed to create note.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add("Note added.", Severity.Success);
+        await LoadNotes();
+    }
+
+    private async Task EditNote(NoteDto note)
+    {
+        var parameters = new DialogParameters<NoteDialog>
+        {
+            { x => x.Title, "Edit Note" },
+            { x => x.NoteTitle, note.Title },
+            { x => x.NoteBody, note.Body }
+        };
+
+        var dialog = await DialogService.ShowAsync<NoteDialog>("Edit Note", parameters);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult is null || dialogResult.Canceled)
+        {
+            return;
+        }
+
+        var data = (NoteDialog.NoteDialogResult)dialogResult.Data!;
+
+        var reasonParameters = new DialogParameters<ReasonDialog>
+        {
+            { x => x.Title, "Reason for edit" },
+            { x => x.ConfirmColor, Color.Primary }
+        };
+
+        var reasonDialog = await DialogService.ShowAsync<ReasonDialog>("Edit Reason", reasonParameters);
+        var reasonResult = await reasonDialog.Result;
+
+        if (reasonResult is null || reasonResult.Canceled)
+        {
+            return;
+        }
+
+        var reason = reasonResult.Data as string;
+        Logger.LogInformation("Note {NoteId} edited. Reason: {Reason}", note.Id, reason);
+
+        var result = await NoteService.UpdateNoteAsync(note.Id, data.Title, data.Body);
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Failed to update note.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add("Note updated.", Severity.Success);
+        await LoadNotes();
+    }
+
+    private async Task DeleteNote(NoteDto note)
+    {
+        var parameters = new DialogParameters<ReasonDialog>
+        {
+            { x => x.Title, "Reason for deletion" },
+            { x => x.WarningText, "This action cannot be undone. The note will be permanently deleted." },
+            { x => x.ConfirmColor, Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ReasonDialog>("Delete Note", parameters);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult is null || dialogResult.Canceled)
+        {
+            return;
+        }
+
+        var reason = dialogResult.Data as string;
+        Logger.LogInformation("Note {NoteId} deleted. Reason: {Reason}", note.Id, reason);
+
+        var result = await NoteService.DeleteNoteAsync(note.Id);
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Failed to delete note.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add("Note deleted.", Severity.Success);
+        await LoadNotes();
+    }
+}
