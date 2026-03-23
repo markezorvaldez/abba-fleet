@@ -10,6 +10,10 @@ services:
       - "5000:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      Supabase__S3Endpoint: ${SUPABASE_S3_ENDPOINT}
+      Supabase__AccessKeyId: ${SUPABASE_ACCESS_KEY_ID}
+      Supabase__SecretAccessKey: ${SUPABASE_SECRET_ACCESS_KEY}
+      Supabase__BucketName: ${SUPABASE_BUCKET_NAME}
     command: dotnet watch run --urls http://+:8080 --no-launch-profile
     depends_on:
       db:

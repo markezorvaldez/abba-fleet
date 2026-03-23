@@ -1,0 +1,178 @@
+@inject IFileService FileService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject ILogger<FilePanel> Logger
+@implements IAsyncDisposable
+
+<MudStack Class="pa-4" Spacing="3">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h6">Files</MudText>
+        <MudSpacer/>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Upload"
+                   OnClick="TriggerFileInput"
+                   Disabled="_uploading">
+            @(_uploading ? "Uploading..." : "Upload File")
+        </MudButton>
+    </MudStack>
+
+    <input type="file" id="@_inputId" style="display:none"/>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true"/>
+    }
+    else if (_files.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Default">No files yet.</MudText>
+    }
+    else
+    {
+        @foreach (var file in _files)
+        {
+            <MudCard Outlined="true">
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.AttachFile" Size="Size.Small" Class="mr-2"/>
+                        <MudLink Href="@($"/api/files/{file.Id}")" Target="_blank">@file.FileName</MudLink>
+                        <MudText Typo="Typo.caption" Color="Color.Default" Class="ml-2">@FormatSize(file.FileSize)</MudText>
+                        <MudSpacer/>
+                        <MudText Typo="Typo.caption" Color="Color.Default">
+                            @file.UploadedBy · @file.UploadedAt.LocalDateTime.ToString("dd MMM yyyy h:mm tt")
+                        </MudText>
+                        <MudTooltip Text="Delete">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                           Color="Color.Error"
+                                           OnClick="@(() => DeleteFile(file))"/>
+                        </MudTooltip>
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+        }
+    }
+</MudStack>
+
+@code {
+
+    [Parameter]
+    public NoteEntityType EntityType { get; set; }
+
+    [Parameter]
+    public Guid EntityId { get; set; }
+
+    private List<FileDto> _files = [];
+    private bool _loading = true;
+    private bool _uploading;
+    private readonly string _inputId = $"file-input-{Guid.NewGuid():N}";
+    private DotNetObjectReference<FilePanel>? _dotNetRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFiles();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+
+            await JS.InvokeVoidAsync(
+                "fileUpload.init",
+                _inputId,
+                EntityType.ToString(),
+                EntityId.ToString(),
+                _dotNetRef);
+        }
+    }
+
+    private async Task TriggerFileInput()
+    {
+        await JS.InvokeVoidAsync("fileUpload.trigger", _inputId);
+    }
+
+    [JSInvokable]
+    public void OnUploadStarted()
+    {
+        _uploading = true;
+        InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnFileUploaded()
+    {
+        _uploading = false;
+        Snackbar.Add("File uploaded.", Severity.Success);
+
+        await InvokeAsync(async () =>
+        {
+            await LoadFiles();
+            StateHasChanged();
+        });
+    }
+
+    [JSInvokable]
+    public void OnUploadFailed(string error)
+    {
+        _uploading = false;
+        Snackbar.Add($"Upload failed: {error}", Severity.Error);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadFiles()
+    {
+        _loading = true;
+
+        try
+        {
+            var files = await FileService.GetFilesForEntityAsync(EntityType, EntityId);
+            _files = [.. files];
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load files for {EntityType} {EntityId}", EntityType, EntityId);
+            Snackbar.Add("Failed to load files.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task DeleteFile(FileDto file)
+    {
+        var result = await FileService.DeleteFileAsync(file.Id);
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Failed to delete file.", Severity.Error);
+
+            return;
+        }
+
+        Snackbar.Add("File deleted.", Severity.Success);
+        await LoadFiles();
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < 1024)
+        {
+            return $"{bytes} B";
+        }
+
+        if (bytes < 1024 * 1024)
+        {
+            return $"{bytes / 1024.0:F1} KB";
+        }
+
+        return $"{bytes / (1024.0 * 1024.0):F1} MB";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _dotNetRef?.Dispose();
+        await Task.CompletedTask;
+    }
+
+}

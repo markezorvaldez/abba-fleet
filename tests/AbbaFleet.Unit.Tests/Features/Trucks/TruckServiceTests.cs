@@ -1,4 +1,5 @@
 using AbbaFleet.Features.Trucks;
+using AbbaFleet.Shared;
 using AutoFixture;
 using FluentValidation;
 using FluentValidation.Results;
@@ -23,6 +24,8 @@ public class TruckServiceTests
     private readonly ITruckRepository _repository = Substitute.For<ITruckRepository>();
     private readonly IValidator<UpsertTruckRequest> _validator = Substitute.For<IValidator<UpsertTruckRequest>>();
     private readonly IInvestmentRepository _investmentRepository = Substitute.For<IInvestmentRepository>();
+    private readonly IFileRepository _fileRepository = Substitute.For<IFileRepository>();
+    private readonly IFileStorageService _fileStorageService = Substitute.For<IFileStorageService>();
     private readonly AuthenticationStateProvider _authStateProvider = Substitute.For<AuthenticationStateProvider>();
 
     // --- CreateAsync ---
@@ -33,15 +36,15 @@ public class TruckServiceTests
         var request = _fixture.Create<UpsertTruckRequest>();
 
         _validator.ValidateAsync(
-                Arg.Is<UpsertTruckRequest>(r =>
-                    r.PlateNumber == request.PlateNumber && r.TruckModel == request.TruckModel),
-                Arg.Any<CancellationToken>())
-            .Returns(new ValidationResult());
+                      Arg.Is<UpsertTruckRequest>(r =>
+                          r.PlateNumber == request.PlateNumber && r.TruckModel == request.TruckModel),
+                      Arg.Any<CancellationToken>())
+                  .Returns(new ValidationResult());
 
         _repository.ExistsWithPlateNumberAsync(Arg.Is(request.PlateNumber), Arg.Is<Guid?>(x => x == null))
                    .Returns(false);
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.CreateAsync(request);
 
         Assert.True(result.Succeeded);
@@ -60,13 +63,12 @@ public class TruckServiceTests
         var errorMessage = _fixture.Create<string>();
 
         _validator.ValidateAsync(
-                Arg.Is<UpsertTruckRequest>(r =>
-                    r.PlateNumber == request.PlateNumber &&
-                    r.TruckModel == request.TruckModel),
-                Arg.Any<CancellationToken>())
-            .Returns(new ValidationResult([new ValidationFailure("PlateNumber", errorMessage)]));
+                      Arg.Is<UpsertTruckRequest>(r =>
+                          r.PlateNumber == request.PlateNumber && r.TruckModel == request.TruckModel),
+                      Arg.Any<CancellationToken>())
+                  .Returns(new ValidationResult([new ValidationFailure("PlateNumber", errorMessage)]));
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.CreateAsync(request);
 
         Assert.False(result.Succeeded);
@@ -80,15 +82,15 @@ public class TruckServiceTests
         var request = _fixture.Create<UpsertTruckRequest>();
 
         _validator.ValidateAsync(
-                Arg.Is<UpsertTruckRequest>(r =>
-                    r.PlateNumber == request.PlateNumber),
-                Arg.Any<CancellationToken>())
-            .Returns(new ValidationResult());
+                      Arg.Is<UpsertTruckRequest>(r =>
+                          r.PlateNumber == request.PlateNumber),
+                      Arg.Any<CancellationToken>())
+                  .Returns(new ValidationResult());
 
         _repository.ExistsWithPlateNumberAsync(Arg.Is(request.PlateNumber), null)
                    .Returns(true);
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.CreateAsync(request);
 
         Assert.False(result.Succeeded);
@@ -115,10 +117,10 @@ public class TruckServiceTests
             _fixture.Create<DateOnly>());
 
         _validator.ValidateAsync(
-                Arg.Is<UpsertTruckRequest>(r =>
-                    r.PlateNumber == request.PlateNumber),
-                Arg.Any<CancellationToken>())
-            .Returns(new ValidationResult());
+                      Arg.Is<UpsertTruckRequest>(r =>
+                          r.PlateNumber == request.PlateNumber),
+                      Arg.Any<CancellationToken>())
+                  .Returns(new ValidationResult());
 
         _repository.ExistsWithPlateNumberAsync(Arg.Is(request.PlateNumber), Arg.Is<Guid?>(x => x == null))
                    .Returns(false);
@@ -126,7 +128,7 @@ public class TruckServiceTests
         _repository.GetByDriverIdAsync(Arg.Is(driverId))
                    .Returns((conflictTruck, (string?)null));
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.CreateAsync(request);
 
         Assert.False(result.Succeeded);
@@ -152,10 +154,10 @@ public class TruckServiceTests
             _fixture.Create<DateOnly>());
 
         _validator.ValidateAsync(
-                Arg.Is<UpsertTruckRequest>(r =>
-                    r.PlateNumber == request.PlateNumber),
-                Arg.Any<CancellationToken>())
-            .Returns(new ValidationResult());
+                      Arg.Is<UpsertTruckRequest>(r =>
+                          r.PlateNumber == request.PlateNumber),
+                      Arg.Any<CancellationToken>())
+                  .Returns(new ValidationResult());
 
         _repository.ExistsWithPlateNumberAsync(Arg.Is(request.PlateNumber), Arg.Is<Guid?>(x => x == null))
                    .Returns(false);
@@ -163,7 +165,7 @@ public class TruckServiceTests
         _repository.GetByDriverIdAsync(Arg.Is(driverId))
                    .Returns((conflictTruck, (string?)null));
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.CreateAsync(request, forceDriverAssignment: true);
 
         Assert.True(result.Succeeded);
@@ -187,15 +189,15 @@ public class TruckServiceTests
                               .Create();
 
         _validator.ValidateAsync(
-                Arg.Is<UpsertTruckRequest>(r =>
-                    r.PlateNumber == request.PlateNumber),
-                Arg.Any<CancellationToken>())
-            .Returns(new ValidationResult());
+                      Arg.Is<UpsertTruckRequest>(r =>
+                          r.PlateNumber == request.PlateNumber),
+                      Arg.Any<CancellationToken>())
+                  .Returns(new ValidationResult());
 
         _repository.ExistsWithPlateNumberAsync(Arg.Is(request.PlateNumber), Arg.Is<Guid?>(x => x == null))
                    .Returns(false);
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.CreateAsync(request);
 
         Assert.True(result.Succeeded);
@@ -221,7 +223,7 @@ public class TruckServiceTests
 
         _repository.GetAllAsync().Returns(trucks);
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var summaries = await service.GetAllAsync();
 
         Assert.Equal(2, summaries.Count);
@@ -248,7 +250,7 @@ public class TruckServiceTests
         var driverName = _fixture.Create<string>();
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, driverName));
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var detail = await service.GetByIdAsync(truck.Id);
 
         Assert.NotNull(detail);
@@ -263,7 +265,7 @@ public class TruckServiceTests
         var id = _fixture.Create<Guid>();
         _repository.GetByIdAsync(Arg.Is(id)).Returns(((Truck, string?)?)null);
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var detail = await service.GetByIdAsync(id);
 
         Assert.Null(detail);
@@ -289,16 +291,15 @@ public class TruckServiceTests
         var updateRequest = _fixture.Create<UpsertTruckRequest>();
 
         _validator.ValidateAsync(
-                Arg.Is<UpsertTruckRequest>(r =>
-                    r.PlateNumber == updateRequest.PlateNumber &&
-                    r.TruckModel == updateRequest.TruckModel),
-                Arg.Any<CancellationToken>())
-            .Returns(new ValidationResult());
+                      Arg.Is<UpsertTruckRequest>(r =>
+                          r.PlateNumber == updateRequest.PlateNumber && r.TruckModel == updateRequest.TruckModel),
+                      Arg.Any<CancellationToken>())
+                  .Returns(new ValidationResult());
 
         _repository.ExistsWithPlateNumberAsync(Arg.Is(updateRequest.PlateNumber), Arg.Is<Guid?>(truck.Id))
                    .Returns(false);
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.UpdateAsync(truck.Id, updateRequest);
 
         Assert.True(result.Succeeded);
@@ -316,15 +317,14 @@ public class TruckServiceTests
         var request = _fixture.Create<UpsertTruckRequest>();
 
         _validator.ValidateAsync(
-                Arg.Is<UpsertTruckRequest>(r =>
-                    r.PlateNumber == request.PlateNumber &&
-                    r.TruckModel == request.TruckModel),
-                Arg.Any<CancellationToken>())
-            .Returns(new ValidationResult());
+                      Arg.Is<UpsertTruckRequest>(r =>
+                          r.PlateNumber == request.PlateNumber && r.TruckModel == request.TruckModel),
+                      Arg.Any<CancellationToken>())
+                  .Returns(new ValidationResult());
 
         _repository.GetByIdAsync(Arg.Is(id)).Returns(((Truck, string?)?)null);
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.UpdateAsync(id, request);
 
         Assert.False(result.Succeeded);
@@ -349,15 +349,15 @@ public class TruckServiceTests
         var updateRequest = _fixture.Create<UpsertTruckRequest>();
 
         _validator.ValidateAsync(
-                Arg.Is<UpsertTruckRequest>(r =>
-                    r.PlateNumber == updateRequest.PlateNumber),
-                Arg.Any<CancellationToken>())
-            .Returns(new ValidationResult());
+                      Arg.Is<UpsertTruckRequest>(r =>
+                          r.PlateNumber == updateRequest.PlateNumber),
+                      Arg.Any<CancellationToken>())
+                  .Returns(new ValidationResult());
 
         _repository.ExistsWithPlateNumberAsync(Arg.Is(updateRequest.PlateNumber), Arg.Is<Guid?>(truck.Id))
                    .Returns(true);
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.UpdateAsync(truck.Id, updateRequest);
 
         Assert.False(result.Succeeded);
@@ -372,13 +372,12 @@ public class TruckServiceTests
         var errorMessage = _fixture.Create<string>();
 
         _validator.ValidateAsync(
-                Arg.Is<UpsertTruckRequest>(r =>
-                    r.PlateNumber == request.PlateNumber &&
-                    r.TruckModel == request.TruckModel),
-                Arg.Any<CancellationToken>())
-            .Returns(new ValidationResult([new ValidationFailure("PlateNumber", errorMessage)]));
+                      Arg.Is<UpsertTruckRequest>(r =>
+                          r.PlateNumber == request.PlateNumber && r.TruckModel == request.TruckModel),
+                      Arg.Any<CancellationToken>())
+                  .Returns(new ValidationResult([new ValidationFailure("PlateNumber", errorMessage)]));
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.UpdateAsync(_fixture.Create<Guid>(), request);
 
         Assert.False(result.Succeeded);
@@ -415,10 +414,10 @@ public class TruckServiceTests
                               .Create();
 
         _validator.ValidateAsync(
-                Arg.Is<UpsertTruckRequest>(r =>
-                    r.PlateNumber == request.PlateNumber),
-                Arg.Any<CancellationToken>())
-            .Returns(new ValidationResult());
+                      Arg.Is<UpsertTruckRequest>(r =>
+                          r.PlateNumber == request.PlateNumber),
+                      Arg.Any<CancellationToken>())
+                  .Returns(new ValidationResult());
 
         _repository.ExistsWithPlateNumberAsync(Arg.Is(request.PlateNumber), Arg.Is<Guid?>(truck.Id))
                    .Returns(false);
@@ -426,7 +425,7 @@ public class TruckServiceTests
         _repository.GetByDriverIdAsync(Arg.Is(driverId))
                    .Returns((conflictTruck, (string?)null));
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.UpdateAsync(truck.Id, request);
 
         Assert.False(result.Succeeded);
@@ -459,10 +458,10 @@ public class TruckServiceTests
                               .Create();
 
         _validator.ValidateAsync(
-                Arg.Is<UpsertTruckRequest>(r =>
-                    r.PlateNumber == request.PlateNumber),
-                Arg.Any<CancellationToken>())
-            .Returns(new ValidationResult());
+                      Arg.Is<UpsertTruckRequest>(r =>
+                          r.PlateNumber == request.PlateNumber),
+                      Arg.Any<CancellationToken>())
+                  .Returns(new ValidationResult());
 
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, (string?)null), (truck, driverName));
 
@@ -472,7 +471,7 @@ public class TruckServiceTests
         _repository.GetByDriverIdAsync(Arg.Is(driverId))
                    .Returns((conflictTruck, (string?)null));
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.UpdateAsync(truck.Id, request, forceDriverAssignment: true);
 
         Assert.True(result.Succeeded);
@@ -506,10 +505,10 @@ public class TruckServiceTests
                               .Create();
 
         _validator.ValidateAsync(
-                Arg.Is<UpsertTruckRequest>(r =>
-                    r.PlateNumber == request.PlateNumber),
-                Arg.Any<CancellationToken>())
-            .Returns(new ValidationResult());
+                      Arg.Is<UpsertTruckRequest>(r =>
+                          r.PlateNumber == request.PlateNumber),
+                      Arg.Any<CancellationToken>())
+                  .Returns(new ValidationResult());
 
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, driverName));
 
@@ -519,7 +518,7 @@ public class TruckServiceTests
         _repository.GetByDriverIdAsync(Arg.Is(driverId))
                    .Returns((truck, driverName));
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.UpdateAsync(truck.Id, request);
 
         Assert.True(result.Succeeded);
@@ -541,7 +540,7 @@ public class TruckServiceTests
 
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, null));
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.DeleteAsync(truck.Id);
 
         Assert.True(result.Succeeded);
@@ -554,7 +553,7 @@ public class TruckServiceTests
         var id = _fixture.Create<Guid>();
         _repository.GetByIdAsync(Arg.Is(id)).Returns(((Truck, string?)?)null);
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.DeleteAsync(id);
 
         Assert.False(result.Succeeded);
@@ -579,7 +578,7 @@ public class TruckServiceTests
         var reason = _fixture.Create<string>();
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, null));
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.DeactivateAsync(truck.Id, reason);
 
         Assert.True(result.Succeeded);
@@ -596,7 +595,7 @@ public class TruckServiceTests
         var id = _fixture.Create<Guid>();
         _repository.GetByIdAsync(Arg.Any<Guid>()).Returns(((Truck, string?)?)null);
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.DeactivateAsync(id, _fixture.Create<string>());
 
         Assert.False(result.Succeeded);
@@ -619,7 +618,7 @@ public class TruckServiceTests
         truck.Update(truck.PlateNumber, truck.TruckModel, truck.OwnershipType, truck.DriverId, isActive: false, truck.DateAcquired);
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, null));
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.DeactivateAsync(truck.Id, _fixture.Create<string>());
 
         Assert.False(result.Succeeded);
@@ -645,7 +644,7 @@ public class TruckServiceTests
         var reason = _fixture.Create<string>();
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, null));
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.ReactivateAsync(truck.Id, reason);
 
         Assert.True(result.Succeeded);
@@ -662,7 +661,7 @@ public class TruckServiceTests
         var id = _fixture.Create<Guid>();
         _repository.GetByIdAsync(Arg.Any<Guid>()).Returns(((Truck, string?)?)null);
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.ReactivateAsync(id, _fixture.Create<string>());
 
         Assert.False(result.Succeeded);
@@ -685,7 +684,7 @@ public class TruckServiceTests
         // Truck is active by default after construction
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, null));
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.ReactivateAsync(truck.Id, _fixture.Create<string>());
 
         Assert.False(result.Succeeded);
@@ -715,7 +714,7 @@ public class TruckServiceTests
         _repository.GetDriverLookupAsync(Arg.Is(driverId)).Returns(driverLookup);
         _repository.GetByDriverIdAsync(Arg.Is(driverId)).Returns(((Truck, string?)?)null);
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.AssignDriverAsync(truck.Id, driverId, "Assigning driver", force: false);
 
         Assert.True(result.Succeeded);
@@ -754,7 +753,7 @@ public class TruckServiceTests
         _repository.GetDriverLookupAsync(Arg.Is(driverId)).Returns(driverLookup);
         _repository.GetByDriverIdAsync(Arg.Is(driverId)).Returns((conflictTruck, (string?)null));
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.AssignDriverAsync(truck.Id, driverId, "Assigning driver", force: false);
 
         Assert.False(result.Succeeded);
@@ -791,7 +790,7 @@ public class TruckServiceTests
         _repository.GetDriverLookupAsync(Arg.Is(driverId)).Returns(driverLookup);
         _repository.GetByDriverIdAsync(Arg.Is(driverId)).Returns((conflictTruck, (string?)null));
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.AssignDriverAsync(truck.Id, driverId, "Reassigning", force: true);
 
         Assert.True(result.Succeeded);
@@ -813,7 +812,7 @@ public class TruckServiceTests
         var id = _fixture.Create<Guid>();
         _repository.GetByIdAsync(Arg.Is(id)).Returns(((Truck, string?)?)null);
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.AssignDriverAsync(id, _fixture.Create<Guid>(), "reason");
 
         Assert.False(result.Succeeded);
@@ -839,7 +838,7 @@ public class TruckServiceTests
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, (string?)null));
         _repository.GetDriverLookupAsync(Arg.Is(driverId)).Returns(driverLookup);
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.AssignDriverAsync(truck.Id, driverId, "reason");
 
         Assert.False(result.Succeeded);
@@ -864,7 +863,7 @@ public class TruckServiceTests
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, driverLookup.FullName));
         _repository.GetDriverLookupAsync(Arg.Is(driverId)).Returns(driverLookup);
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.AssignDriverAsync(truck.Id, driverId, "reason");
 
         Assert.False(result.Succeeded);
@@ -891,7 +890,7 @@ public class TruckServiceTests
 
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, driverName), (truck, (string?)null));
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.UnassignDriverAsync(truck.Id, "Driver left");
 
         Assert.True(result.Succeeded);
@@ -908,7 +907,7 @@ public class TruckServiceTests
         var id = _fixture.Create<Guid>();
         _repository.GetByIdAsync(Arg.Is(id)).Returns(((Truck, string?)?)null);
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.UnassignDriverAsync(id, "reason");
 
         Assert.False(result.Succeeded);
@@ -930,7 +929,7 @@ public class TruckServiceTests
 
         _repository.GetByIdAsync(Arg.Is(truck.Id)).Returns((truck, (string?)null));
 
-        var service = new TruckService(_validator, _repository, _investmentRepository, _authStateProvider);
+        var service = new TruckService(_validator, _repository, _investmentRepository, _fileRepository, _fileStorageService, _authStateProvider);
         var result = await service.UnassignDriverAsync(truck.Id, "reason");
 
         Assert.False(result.Succeeded);

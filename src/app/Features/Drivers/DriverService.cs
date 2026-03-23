@@ -3,7 +3,11 @@ using FluentValidation;
 
 namespace AbbaFleet.Features.Drivers;
 
-public class DriverService(IValidator<UpsertDriverRequest> validator, IDriverRepository repository) : IDriverService
+public class DriverService(
+    IValidator<UpsertDriverRequest> validator,
+    IDriverRepository repository,
+    IFileRepository fileRepository,
+    IFileStorageService fileStorageService) : IDriverService
 {
     public async Task<IReadOnlyList<DriverSummary>> GetAllAsync()
     {
@@ -91,6 +95,13 @@ public class DriverService(IValidator<UpsertDriverRequest> validator, IDriverRep
         }
 
         // TODO: When Trip/Truck entities exist, check for associated records before allowing delete.
+
+        var files = await fileRepository.GetByEntityAsync(NoteEntityType.Driver, id);
+        foreach (var file in files)
+        {
+            await fileStorageService.DeleteAsync(file.StoragePath);
+            await fileRepository.DeleteAsync(file);
+        }
 
         await repository.DeleteAsync(driver);
         return true;
