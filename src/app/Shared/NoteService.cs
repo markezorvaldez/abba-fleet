@@ -1,9 +1,8 @@
 using System.Security.Claims;
-using AbbaFleet.Shared;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
 
-namespace AbbaFleet.Infrastructure;
+namespace AbbaFleet.Shared;
 
 public class NoteService(
     INoteRepository repository,

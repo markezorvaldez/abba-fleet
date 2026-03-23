@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using AbbaFleet.Infrastructure;
 using AbbaFleet.Shared;
 using AutoFixture;
 using Microsoft.AspNetCore.Components.Authorization;
