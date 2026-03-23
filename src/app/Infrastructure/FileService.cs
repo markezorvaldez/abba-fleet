@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using AbbaFleet.Shared;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.Extensions.Logging;
 
 namespace AbbaFleet.Infrastructure;
 
@@ -26,6 +28,24 @@ public class FileService(
         var note = files.Any() ? await noteRepository.GetByIdAsync(noteId) : null;
         var noteTitle = note?.Title;
         return files.Select(f => MapToDto(f, noteTitle)).ToList();
+    }
+
+    public async Task<Result<FileDto>> UploadFileAsync(
+        Guid? noteId, NoteEntityType entityType, Guid entityId, IBrowserFile file)
+    {
+        if (file.Size > MaxFileSizeBytes)
+        {
+            return $"File exceeds the maximum allowed size of 10 MB.";
+        }
+
+        // Read the BrowserFileStream on the caller's context (Blazor render context)
+        // before delegating to the stream-based overload, to avoid deadlocks.
+        await using var browserStream = file.OpenReadStream(MaxFileSizeBytes);
+        using var memoryStream = new MemoryStream();
+        await browserStream.CopyToAsync(memoryStream);
+        memoryStream.Position = 0;
+
+        return await UploadFileAsync(noteId, entityType, entityId, memoryStream, file.Name, file.Size, file.ContentType);
     }
 
     public async Task<Result<FileDto>> UploadFileAsync(
