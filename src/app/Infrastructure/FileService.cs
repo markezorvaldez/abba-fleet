@@ -38,25 +38,6 @@ public class FileService(
             return $"File exceeds the maximum allowed size of 10 MB.";
         }
 
-        // Read the BrowserFileStream on the caller's context (Blazor render context)
-        // before delegating to the stream-based overload, to avoid deadlocks.
-        await using var browserStream = file.OpenReadStream(MaxFileSizeBytes);
-        using var memoryStream = new MemoryStream();
-        await browserStream.CopyToAsync(memoryStream);
-        memoryStream.Position = 0;
-
-        return await UploadFileAsync(noteId, entityType, entityId, memoryStream, file.Name, file.Size, file.ContentType);
-    }
-
-    public async Task<Result<FileDto>> UploadFileAsync(
-        Guid? noteId, NoteEntityType entityType, Guid entityId,
-        Stream stream, string fileName, long fileSize, string contentType)
-    {
-        if (fileSize > MaxFileSizeBytes)
-        {
-            return $"File exceeds the maximum allowed size of 10 MB.";
-        }
-
         if (noteId.HasValue)
         {
             var note = await noteRepository.GetByIdAsync(noteId.Value);
@@ -74,15 +55,16 @@ public class FileService(
             return "Unable to determine the current user.";
         }
 
-        var storagePath = await storageService.SaveAsync(stream, fileName, entityType, entityId);
+        await using var stream = file.OpenReadStream(MaxFileSizeBytes);
+        var storagePath = await storageService.SaveAsync(stream, file.Name, entityType, entityId);
 
         var attachedFile = new AttachedFile(
             noteId,
             entityType,
             entityId,
-            fileName,
-            fileSize,
-            contentType,
+            file.Name,
+            file.Size,
+            file.ContentType,
             storagePath,
             userName);
 
@@ -90,7 +72,7 @@ public class FileService(
 
         logger.LogInformation(
             "File {FileName} uploaded for {EntityType} {EntityId} by {UserName}",
-            fileName, entityType, entityId, userName);
+            file.Name, entityType, entityId, userName);
 
         string? noteTitle = null;
 

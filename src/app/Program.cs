@@ -117,37 +117,6 @@ app.MapGet("/api/files/{id:guid}", async (Guid id, IFileService fileService) =>
     return Results.File(stream, contentType, fileName);
 }).RequireAuthorization();
 
-app.MapPost("/api/files/upload", async (HttpRequest request, IFileRepository fileRepository, IFileStorageService storageService) =>
-{
-    var form = await request.ReadFormAsync();
-    var file = form.Files.GetFile("file");
-
-    if (file is null)
-    {
-        return Results.BadRequest("No file provided.");
-    }
-
-    var entityTypeStr = form["entityType"].ToString();
-    var entityIdStr = form["entityId"].ToString();
-
-    if (!Enum.TryParse<NoteEntityType>(entityTypeStr, out var entityType)
-        || !Guid.TryParse(entityIdStr, out var entityId))
-    {
-        return Results.BadRequest("Invalid entityType or entityId.");
-    }
-
-    Guid? noteId = Guid.TryParse(form["noteId"].ToString(), out var nid) ? nid : null;
-    var userName = request.HttpContext.User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "unknown";
-
-    await using var stream = file.OpenReadStream();
-    var storagePath = await storageService.SaveAsync(stream, file.FileName, entityType, entityId);
-
-    var attachedFile = new AttachedFile(noteId, entityType, entityId, file.FileName, file.Length, file.ContentType, storagePath, userName);
-    await fileRepository.AddAsync(attachedFile);
-
-    return Results.Ok(new FileDto(attachedFile.Id, attachedFile.NoteId, null, attachedFile.FileName, attachedFile.FileSize, attachedFile.ContentType, attachedFile.UploadedBy, attachedFile.UploadedAt));
-}).RequireAuthorization().DisableAntiforgery();
-
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
