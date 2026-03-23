@@ -9,6 +9,8 @@ public class TruckService(
     IValidator<UpsertTruckRequest> validator,
     ITruckRepository repository,
     IInvestmentRepository investmentRepository,
+    IFileRepository fileRepository,
+    IFileStorageService fileStorageService,
     AuthenticationStateProvider authStateProvider) : ITruckService
 {
     public async Task<IReadOnlyList<TruckSummary>> GetAllAsync()
@@ -158,6 +160,13 @@ public class TruckService(
         }
 
         // TODO: When Trip/Expense entities exist, check for associated records before allowing delete.
+
+        var files = await fileRepository.GetByEntityAsync(NoteEntityType.Truck, id);
+        foreach (var file in files)
+        {
+            await fileStorageService.DeleteAsync(file.StoragePath);
+            await fileRepository.DeleteAsync(file);
+        }
 
         await repository.DeleteAsync(result.Value.Truck);
 
