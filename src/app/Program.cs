@@ -56,6 +56,13 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+// Blazor Server streams IBrowserFile data over SignalR JS interop.
+// Default MaximumReceiveMessageSize is 32 KB, which is too small for file uploads.
+builder.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions>(options =>
+{
+    options.MaximumReceiveMessageSize = 10 * 1024 * 1024; // 10 MB — matches max upload size
+});
+
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddDataProtection()
     .PersistKeysToDbContext<AppDbContext>();

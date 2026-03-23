@@ -3,7 +3,6 @@ using AbbaFleet.Infrastructure;
 using AbbaFleet.Shared;
 using AutoFixture;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit;
@@ -38,15 +37,9 @@ public class FileServiceTests
         _authStateProvider,
         _logger);
 
-    private IBrowserFile CreateMockFile(string name = "test.pdf", long size = 1024, string contentType = "application/pdf")
-    {
-        var file = Substitute.For<IBrowserFile>();
-        file.Name.Returns(name);
-        file.Size.Returns(size);
-        file.ContentType.Returns(contentType);
-        file.OpenReadStream(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(new MemoryStream());
-        return file;
-    }
+    private static (Stream Stream, string Name, long Size, string ContentType) CreateTestFile(
+        string name = "test.pdf", long size = 1024, string contentType = "application/pdf")
+        => (new MemoryStream(), name, size, contentType);
 
     // --- GetFilesForEntityAsync ---
 
@@ -138,14 +131,14 @@ public class FileServiceTests
         var entityType = NoteEntityType.Driver;
         var entityId = _fixture.Create<Guid>();
         var storagePath = $"driver/{entityId}/file.pdf";
-        var browserFile = CreateMockFile("file.pdf", 512, "application/pdf");
+        var (stream, name, size, contentType) = CreateTestFile("file.pdf", 512, "application/pdf");
 
         _storageService
             .SaveAsync(Arg.Any<Stream>(), Arg.Is("file.pdf"), Arg.Is(entityType), Arg.Is(entityId))
             .Returns(storagePath);
 
         var service = CreateService();
-        var result = await service.UploadFileAsync(null, entityType, entityId, browserFile);
+        var result = await service.UploadFileAsync(null, entityType, entityId, stream, name, size, contentType);
 
         Assert.True(result.Succeeded);
         Assert.Equal("file.pdf", result.Value!.FileName);
@@ -163,10 +156,10 @@ public class FileServiceTests
     [Fact]
     public async Task UploadFileAsync_FileTooLarge_ReturnsFailure()
     {
-        var browserFile = CreateMockFile("big.pdf", 11 * 1024 * 1024, "application/pdf");
+        var (stream, name, size, contentType) = CreateTestFile("big.pdf", 11 * 1024 * 1024, "application/pdf");
 
         var service = CreateService();
-        var result = await service.UploadFileAsync(null, NoteEntityType.Driver, _fixture.Create<Guid>(), browserFile);
+        var result = await service.UploadFileAsync(null, NoteEntityType.Driver, _fixture.Create<Guid>(), stream, name, size, contentType);
 
         Assert.False(result.Succeeded);
         Assert.Contains("10 MB", result.Error, StringComparison.OrdinalIgnoreCase);
@@ -177,12 +170,12 @@ public class FileServiceTests
     public async Task UploadFileAsync_NoteIdProvidedAndNoteNotFound_ReturnsFailure()
     {
         var noteId = _fixture.Create<Guid>();
-        var browserFile = CreateMockFile();
+        var (stream, name, size, contentType) = CreateTestFile();
 
         _noteRepository.GetByIdAsync(Arg.Is(noteId)).Returns((Note?)null);
 
         var service = CreateService();
-        var result = await service.UploadFileAsync(noteId, NoteEntityType.Driver, _fixture.Create<Guid>(), browserFile);
+        var result = await service.UploadFileAsync(noteId, NoteEntityType.Driver, _fixture.Create<Guid>(), stream, name, size, contentType);
 
         Assert.False(result.Succeeded);
         Assert.Contains("note", result.Error, StringComparison.OrdinalIgnoreCase);
@@ -197,7 +190,7 @@ public class FileServiceTests
         var noteId = _fixture.Create<Guid>();
         var storagePath = $"driver/{entityId}/file.pdf";
         var note = new Note(entityType, entityId, _fixture.Create<string>(), _fixture.Create<string>(), _fixture.Create<string>());
-        var browserFile = CreateMockFile("file.pdf", 512, "application/pdf");
+        var (stream, name, size, contentType) = CreateTestFile("file.pdf", 512, "application/pdf");
 
         _noteRepository.GetByIdAsync(Arg.Is(noteId)).Returns(note);
         _storageService
@@ -205,7 +198,7 @@ public class FileServiceTests
             .Returns(storagePath);
 
         var service = CreateService();
-        var result = await service.UploadFileAsync(noteId, entityType, entityId, browserFile);
+        var result = await service.UploadFileAsync(noteId, entityType, entityId, stream, name, size, contentType);
 
         Assert.True(result.Succeeded);
         Assert.Equal(noteId, result.Value!.NoteId);
