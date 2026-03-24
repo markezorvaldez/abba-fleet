@@ -30,7 +30,7 @@ public class DriverServiceTests
     {
         var request = _fixture.Create<UpsertDriverRequest>();
 
-        _validator.Validate(
+        _validator.ValidateAsync(
                       Arg.Is<UpsertDriverRequest>(r =>
                           r.FullName == request.FullName && r.PhoneNumber == request.PhoneNumber))
                   .Returns(new ValidationResult());
@@ -54,7 +54,7 @@ public class DriverServiceTests
         var request = _fixture.Create<UpsertDriverRequest>();
         var errorMessage = _fixture.Create<string>();
 
-        _validator.Validate(
+        _validator.ValidateAsync(
                       Arg.Is<UpsertDriverRequest>(r =>
                           r.FullName == request.FullName && r.PhoneNumber == request.PhoneNumber))
                   .Returns(
@@ -158,7 +158,7 @@ public class DriverServiceTests
 
         var updateRequest = _fixture.Create<UpsertDriverRequest>();
 
-        _validator.Validate(
+        _validator.ValidateAsync(
                       Arg.Is<UpsertDriverRequest>(r =>
                           r.FullName == updateRequest.FullName && r.PhoneNumber == updateRequest.PhoneNumber))
                   .Returns(new ValidationResult());
@@ -183,7 +183,7 @@ public class DriverServiceTests
         var id = _fixture.Create<Guid>();
         var request = _fixture.Create<UpsertDriverRequest>();
 
-        _validator.Validate(
+        _validator.ValidateAsync(
                       Arg.Is<UpsertDriverRequest>(r =>
                           r.FullName == request.FullName && r.PhoneNumber == request.PhoneNumber))
                   .Returns(new ValidationResult());
@@ -204,7 +204,7 @@ public class DriverServiceTests
         var request = _fixture.Create<UpsertDriverRequest>();
         var errorMessage = _fixture.Create<string>();
 
-        _validator.Validate(
+        _validator.ValidateAsync(
                       Arg.Is<UpsertDriverRequest>(r =>
                           r.FullName == request.FullName && r.PhoneNumber == request.PhoneNumber))
                   .Returns(new ValidationResult([new ValidationFailure("FullName", errorMessage)]));

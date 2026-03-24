@@ -44,7 +44,7 @@ public static class FileHandlers
             return Results.BadRequest("Invalid entity ID.");
         }
 
-        using var stream = file.OpenReadStream();
+        await using var stream = file.OpenReadStream();
 
         var result = await fileService.UploadFileAsync(
             null,

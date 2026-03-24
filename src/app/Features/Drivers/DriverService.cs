@@ -12,20 +12,21 @@ public class DriverService(
     public async Task<IReadOnlyList<DriverSummary>> GetAllAsync()
     {
         var drivers = await repository.GetAllAsync();
+
         return drivers
-            .Select(d => new DriverSummary(
-                d.Id,
-                d.FullName,
-                d.PhoneNumber,
-                d.IsReliever,
-                d.IsActive,
-                d.DateStarted))
-            .ToList();
+               .Select(d => new DriverSummary(
+                   d.Id,
+                   d.FullName,
+                   d.PhoneNumber,
+                   d.IsReliever,
+                   d.IsActive,
+                   d.DateStarted))
+               .ToList();
     }
 
     public async Task<Result<Driver>> CreateAsync(UpsertDriverRequest request)
     {
-        var validation = validator.Validate(request);
+        var validation = await validator.ValidateAsync(request);
 
         if (!validation.IsValid)
         {
@@ -41,6 +42,7 @@ public class DriverService(
             request.DateStarted);
 
         await repository.AddAsync(driver);
+
         return driver;
     }
 
@@ -48,17 +50,12 @@ public class DriverService(
     {
         var driver = await repository.GetByIdAsync(id);
 
-        if (driver is null)
-        {
-            return null;
-        }
-
-        return MapToDetail(driver);
+        return driver is null ? null : MapToDetail(driver);
     }
 
     public async Task<Result<DriverDetailDto>> UpdateAsync(Guid id, UpsertDriverRequest request)
     {
-        var validation = validator.Validate(request);
+        var validation = await validator.ValidateAsync(request);
 
         if (!validation.IsValid)
         {
@@ -82,6 +79,7 @@ public class DriverService(
             request.DateStarted);
 
         await repository.UpdateAsync(driver);
+
         return MapToDetail(driver);
     }
 
@@ -97,6 +95,7 @@ public class DriverService(
         // TODO: When Trip/Truck entities exist, check for associated records before allowing delete.
 
         var files = await fileRepository.GetByEntityAsync(NoteEntityType.Driver, id);
+
         foreach (var file in files)
         {
             await fileStorageService.DeleteAsync(file.StoragePath);
@@ -104,6 +103,7 @@ public class DriverService(
         }
 
         await repository.DeleteAsync(driver);
+
         return true;
     }
 
@@ -131,6 +131,7 @@ public class DriverService(
             driver.DateStarted);
 
         await repository.UpdateAsync(driver);
+
         return true;
     }
 
@@ -158,6 +159,7 @@ public class DriverService(
             driver.DateStarted);
 
         await repository.UpdateAsync(driver);
+
         return true;
     }
 
