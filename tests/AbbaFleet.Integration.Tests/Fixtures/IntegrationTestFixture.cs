@@ -19,10 +19,10 @@ public class IntegrationTestFixture : IAsyncLifetime
     public const string AdminPassword = "TestPass1!";
 
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithDatabase("abbafleet_test")
-        .WithUsername("postgres")
-        .WithPassword("postgres")
-        .Build();
+                                                     .WithDatabase("abbafleet_test")
+                                                     .WithUsername("postgres")
+                                                     .WithPassword("postgres")
+                                                     .Build();
 
     public WebApplicationFactory<Program> Factory { get; private set; } = null!;
 
@@ -37,13 +37,14 @@ public class IntegrationTestFixture : IAsyncLifetime
                 builder.UseSetting("ConnectionStrings:DefaultConnection", _postgres.GetConnectionString());
                 builder.UseSetting("SEED_ADMIN_EMAIL", AdminEmail);
                 builder.UseSetting("SEED_ADMIN_PASSWORD", AdminPassword);
+
                 builder.ConfigureServices(services =>
                 {
                     // Remove background hosted services; fixture runs setup synchronously below
                     var hostedServices = services
-                        .Where(d => d.ImplementationType == typeof(MigrationHostedService)
-                                 || d.ImplementationType == typeof(AdminSeedService))
-                        .ToList();
+                                         .Where(d => d.ImplementationType == typeof(MigrationHostedService))
+                                         .ToList();
+
                     foreach (var descriptor in hostedServices)
                     {
                         services.Remove(descriptor);
@@ -57,6 +58,7 @@ public class IntegrationTestFixture : IAsyncLifetime
         await db.Database.MigrateAsync();
 
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
         if (await userManager.FindByEmailAsync(AdminEmail) == null)
         {
             var user = new ApplicationUser
@@ -67,7 +69,9 @@ public class IntegrationTestFixture : IAsyncLifetime
                 EmailConfirmed = true,
                 IsActive = true
             };
+
             await userManager.CreateAsync(user, AdminPassword);
+
             foreach (var p in Enum.GetValues<Permission>())
             {
                 await userManager.AddClaimAsync(user, new Claim(PermissionClaimTypes.Permission, p.ToString()));
@@ -81,10 +85,7 @@ public class IntegrationTestFixture : IAsyncLifetime
         await _postgres.DisposeAsync();
     }
 
-    public HttpClient CreateClient() => Factory.CreateClient(new WebApplicationFactoryClientOptions
-    {
-        AllowAutoRedirect = false
-    });
+    public HttpClient CreateClient() => Factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
     public async Task<Dictionary<string, string>> GetLoginFormFieldsAsync(HttpClient client)
     {
@@ -98,6 +99,7 @@ public class IntegrationTestFixture : IAsyncLifetime
         {
             var name = Regex.Match(match.Value, @"name=[""']([^""']+)[""']").Groups[1].Value;
             var value = Regex.Match(match.Value, @"value=[""']([^""']*)[""']").Groups[1].Value;
+
             if (!string.IsNullOrEmpty(name))
             {
                 fields[name] = value;
