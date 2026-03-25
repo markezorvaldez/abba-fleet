@@ -12,40 +12,17 @@ public class DriverServiceTests
 {
     private readonly IFixture _fixture = CreateFixture();
 
+    private readonly IDriverRepository _repository = Substitute.For<IDriverRepository>();
+    private readonly IValidator<UpsertDriverRequest> _validator = Substitute.For<IValidator<UpsertDriverRequest>>();
+    private readonly IFileRepository _fileRepository = Substitute.For<IFileRepository>();
+    private readonly IFileStorageService _fileStorageService = Substitute.For<IFileStorageService>();
+
     private static Fixture CreateFixture()
     {
         var fixture = new Fixture();
         fixture.Register(() => DateOnly.FromDateTime(fixture.Create<DateTime>()));
 
         return fixture;
-    }
-
-    private readonly IDriverRepository _repository = Substitute.For<IDriverRepository>();
-    private readonly IValidator<UpsertDriverRequest> _validator = Substitute.For<IValidator<UpsertDriverRequest>>();
-    private readonly IFileRepository _fileRepository = Substitute.For<IFileRepository>();
-    private readonly IFileStorageService _fileStorageService = Substitute.For<IFileStorageService>();
-
-    [Fact]
-    public async Task CreateAsync_ValidInput_ReturnsSuccessAndAddsToRepository()
-    {
-        var request = _fixture.Create<UpsertDriverRequest>();
-
-        _validator.ValidateAsync(
-                      Arg.Is<UpsertDriverRequest>(r =>
-                          r.FullName == request.FullName && r.PhoneNumber == request.PhoneNumber))
-                  .Returns(new ValidationResult());
-
-        var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
-
-        var result = await service.CreateAsync(request);
-
-        Assert.True(result.Succeeded);
-        Assert.Equal(request.FullName, result.Value!.FullName);
-
-        await _repository.Received(1)
-                         .AddAsync(
-                             Arg.Is<Driver>(d =>
-                                 d.FullName == request.FullName && d.PhoneNumber == request.PhoneNumber));
     }
 
     [Fact]
@@ -73,6 +50,134 @@ public class DriverServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_ValidInput_ReturnsSuccessAndAddsToRepository()
+    {
+        var request = _fixture.Create<UpsertDriverRequest>();
+
+        _validator.ValidateAsync(
+                      Arg.Is<UpsertDriverRequest>(r =>
+                          r.FullName == request.FullName && r.PhoneNumber == request.PhoneNumber))
+                  .Returns(new ValidationResult());
+
+        var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
+
+        var result = await service.CreateAsync(request);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(request.FullName, result.Value!.FullName);
+
+        await _repository.Received(1)
+                         .AddAsync(
+                             Arg.Is<Driver>(d =>
+                                 d.FullName == request.FullName && d.PhoneNumber == request.PhoneNumber));
+    }
+
+    // --- DeactivateAsync ---
+
+    [Fact]
+    public async Task DeactivateAsync_ActiveDriver_DeactivatesAndCallsRepository()
+    {
+        var request = _fixture.Create<UpsertDriverRequest>();
+
+        var driver = new Driver(
+            request.FullName,
+            request.PhoneNumber,
+            null,
+            null,
+            false,
+            request.DateStarted);
+
+        var reason = _fixture.Create<string>();
+        _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
+
+        var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
+        var result = await service.DeactivateAsync(driver.Id, reason);
+
+        Assert.True(result.Succeeded);
+
+        await _repository.Received(1)
+                         .UpdateAsync(
+                             Arg.Is<Driver>(d =>
+                                 d.Id == driver.Id && !d.IsActive));
+    }
+
+    [Fact]
+    public async Task DeactivateAsync_AlreadyInactive_ReturnsFailure()
+    {
+        var request = _fixture.Create<UpsertDriverRequest>();
+
+        var driver = new Driver(
+            request.FullName,
+            request.PhoneNumber,
+            null,
+            null,
+            false,
+            request.DateStarted);
+
+        driver.Update(driver.FullName, driver.PhoneNumber, null, null, isActive: false, driver.IsReliever, driver.DateStarted);
+        _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
+
+        var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
+        var result = await service.DeactivateAsync(driver.Id, _fixture.Create<string>());
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("already inactive", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Driver>());
+    }
+
+    [Fact]
+    public async Task DeactivateAsync_DriverNotFound_ReturnsFailure()
+    {
+        var id = _fixture.Create<Guid>();
+        _repository.GetByIdAsync(Arg.Any<Guid>()).Returns((Driver?)null);
+
+        var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
+        var result = await service.DeactivateAsync(id, _fixture.Create<string>());
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Driver>());
+    }
+
+    // --- DeleteAsync ---
+
+    [Fact]
+    public async Task DeleteAsync_DriverExists_ReturnsSuccessAndCallsRepository()
+    {
+        var request = _fixture.Create<UpsertDriverRequest>();
+
+        var driver = new Driver(
+            request.FullName,
+            request.PhoneNumber,
+            null,
+            null,
+            false,
+            request.DateStarted);
+
+        _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
+
+        var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
+        var result = await service.DeleteAsync(driver.Id);
+
+        Assert.True(result.Succeeded);
+        await _repository.Received(1).DeleteAsync(Arg.Is<Driver>(d => d.Id == driver.Id));
+    }
+
+    [Fact]
+    public async Task DeleteAsync_DriverNotFound_ReturnsFailure()
+    {
+        var id = _fixture.Create<Guid>();
+        _repository.GetByIdAsync(Arg.Is(id)).Returns((Driver?)null);
+
+        var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
+        var result = await service.DeleteAsync(id);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().DeleteAsync(Arg.Any<Driver>());
+    }
+
+    [Fact]
     public async Task GetAllAsync_ReturnsMappedSummaries()
     {
         var name1 = _fixture.Create<string>();
@@ -84,8 +189,8 @@ public class DriverServiceTests
 
         var drivers = new List<Driver>
         {
-            new Driver(name1, phone1, null, null, false, date1),
-            new Driver(name2, phone2, null, null, true, date2)
+            new(name1, phone1, null, null, false, date1),
+            new(name2, phone2, null, null, true, date2)
         };
 
         _repository.GetAllAsync().Returns(drivers);
@@ -139,42 +244,71 @@ public class DriverServiceTests
         Assert.Null(detail);
     }
 
-    // --- UpdateAsync ---
-
     [Fact]
-    public async Task UpdateAsync_ValidInput_ReturnsSuccessAndCallsRepository()
+    public async Task ReactivateAsync_AlreadyActive_ReturnsFailure()
     {
-        var createRequest = _fixture.Create<UpsertDriverRequest>();
+        var request = _fixture.Create<UpsertDriverRequest>();
 
         var driver = new Driver(
-            createRequest.FullName,
-            createRequest.PhoneNumber,
+            request.FullName,
+            request.PhoneNumber,
             null,
             null,
             false,
-            createRequest.DateStarted);
+            request.DateStarted);
 
+        // Driver is active by default after construction
         _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
 
-        var updateRequest = _fixture.Create<UpsertDriverRequest>();
+        var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
+        var result = await service.ReactivateAsync(driver.Id);
 
-        _validator.ValidateAsync(
-                      Arg.Is<UpsertDriverRequest>(r =>
-                          r.FullName == updateRequest.FullName && r.PhoneNumber == updateRequest.PhoneNumber))
-                  .Returns(new ValidationResult());
+        Assert.False(result.Succeeded);
+        Assert.Contains("already active", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Driver>());
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_DriverNotFound_ReturnsFailure()
+    {
+        var id = _fixture.Create<Guid>();
+        _repository.GetByIdAsync(Arg.Any<Guid>()).Returns((Driver?)null);
 
         var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
-        var result = await service.UpdateAsync(driver.Id, updateRequest);
+        var result = await service.ReactivateAsync(id);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Driver>());
+    }
+
+    // --- ReactivateAsync ---
+
+    [Fact]
+    public async Task ReactivateAsync_InactiveDriver_ReactivatesAndCallsRepository()
+    {
+        var request = _fixture.Create<UpsertDriverRequest>();
+
+        var driver = new Driver(
+            request.FullName,
+            request.PhoneNumber,
+            null,
+            null,
+            false,
+            request.DateStarted);
+
+        driver.Update(driver.FullName, driver.PhoneNumber, null, null, isActive: false, driver.IsReliever, driver.DateStarted);
+        _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
+
+        var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
+        var result = await service.ReactivateAsync(driver.Id);
 
         Assert.True(result.Succeeded);
-        Assert.Equal(updateRequest.FullName, result.Value!.FullName);
-        Assert.Equal(updateRequest.PhoneNumber, result.Value.PhoneNumber);
-        Assert.Equal(updateRequest.IsReliever, result.Value.IsReliever);
 
         await _repository.Received(1)
                          .UpdateAsync(
                              Arg.Is<Driver>(d =>
-                                 d.FullName == updateRequest.FullName && d.PhoneNumber == updateRequest.PhoneNumber));
+                                 d.Id == driver.Id && d.IsActive));
     }
 
     [Fact]
@@ -218,175 +352,41 @@ public class DriverServiceTests
         await _repository.DidNotReceive().GetByIdAsync(Arg.Any<Guid>());
     }
 
-    // --- DeleteAsync ---
+    // --- UpdateAsync ---
 
     [Fact]
-    public async Task DeleteAsync_DriverExists_ReturnsSuccessAndCallsRepository()
+    public async Task UpdateAsync_ValidInput_ReturnsSuccessAndCallsRepository()
     {
-        var request = _fixture.Create<UpsertDriverRequest>();
+        var createRequest = _fixture.Create<UpsertDriverRequest>();
 
         var driver = new Driver(
-            request.FullName,
-            request.PhoneNumber,
+            createRequest.FullName,
+            createRequest.PhoneNumber,
             null,
             null,
             false,
-            request.DateStarted);
+            createRequest.DateStarted);
 
         _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
 
+        var updateRequest = _fixture.Create<UpsertDriverRequest>();
+
+        _validator.ValidateAsync(
+                      Arg.Is<UpsertDriverRequest>(r =>
+                          r.FullName == updateRequest.FullName && r.PhoneNumber == updateRequest.PhoneNumber))
+                  .Returns(new ValidationResult());
+
         var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
-        var result = await service.DeleteAsync(driver.Id);
+        var result = await service.UpdateAsync(driver.Id, updateRequest);
 
         Assert.True(result.Succeeded);
-        await _repository.Received(1).DeleteAsync(Arg.Is<Driver>(d => d.Id == driver.Id));
-    }
-
-    [Fact]
-    public async Task DeleteAsync_DriverNotFound_ReturnsFailure()
-    {
-        var id = _fixture.Create<Guid>();
-        _repository.GetByIdAsync(Arg.Is(id)).Returns((Driver?)null);
-
-        var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
-        var result = await service.DeleteAsync(id);
-
-        Assert.False(result.Succeeded);
-        Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
-        await _repository.DidNotReceive().DeleteAsync(Arg.Any<Driver>());
-    }
-
-    // --- DeactivateAsync ---
-
-    [Fact]
-    public async Task DeactivateAsync_ActiveDriver_DeactivatesAndCallsRepository()
-    {
-        var request = _fixture.Create<UpsertDriverRequest>();
-
-        var driver = new Driver(
-            request.FullName,
-            request.PhoneNumber,
-            null,
-            null,
-            false,
-            request.DateStarted);
-
-        var reason = _fixture.Create<string>();
-        _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
-
-        var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
-        var result = await service.DeactivateAsync(driver.Id, reason);
-
-        Assert.True(result.Succeeded);
+        Assert.Equal(updateRequest.FullName, result.Value!.FullName);
+        Assert.Equal(updateRequest.PhoneNumber, result.Value.PhoneNumber);
+        Assert.Equal(updateRequest.IsReliever, result.Value.IsReliever);
 
         await _repository.Received(1)
                          .UpdateAsync(
                              Arg.Is<Driver>(d =>
-                                 d.Id == driver.Id && !d.IsActive));
-    }
-
-    [Fact]
-    public async Task DeactivateAsync_DriverNotFound_ReturnsFailure()
-    {
-        var id = _fixture.Create<Guid>();
-        _repository.GetByIdAsync(Arg.Any<Guid>()).Returns((Driver?)null);
-
-        var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
-        var result = await service.DeactivateAsync(id, _fixture.Create<string>());
-
-        Assert.False(result.Succeeded);
-        Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
-        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Driver>());
-    }
-
-    [Fact]
-    public async Task DeactivateAsync_AlreadyInactive_ReturnsFailure()
-    {
-        var request = _fixture.Create<UpsertDriverRequest>();
-
-        var driver = new Driver(
-            request.FullName,
-            request.PhoneNumber,
-            null,
-            null,
-            false,
-            request.DateStarted);
-
-        driver.Update(driver.FullName, driver.PhoneNumber, null, null, isActive: false, driver.IsReliever, driver.DateStarted);
-        _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
-
-        var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
-        var result = await service.DeactivateAsync(driver.Id, _fixture.Create<string>());
-
-        Assert.False(result.Succeeded);
-        Assert.Contains("already inactive", result.Error, StringComparison.OrdinalIgnoreCase);
-        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Driver>());
-    }
-
-    // --- ReactivateAsync ---
-
-    [Fact]
-    public async Task ReactivateAsync_InactiveDriver_ReactivatesAndCallsRepository()
-    {
-        var request = _fixture.Create<UpsertDriverRequest>();
-
-        var driver = new Driver(
-            request.FullName,
-            request.PhoneNumber,
-            null,
-            null,
-            false,
-            request.DateStarted);
-
-        driver.Update(driver.FullName, driver.PhoneNumber, null, null, isActive: false, driver.IsReliever, driver.DateStarted);
-        _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
-
-        var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
-        var result = await service.ReactivateAsync(driver.Id);
-
-        Assert.True(result.Succeeded);
-
-        await _repository.Received(1)
-                         .UpdateAsync(
-                             Arg.Is<Driver>(d =>
-                                 d.Id == driver.Id && d.IsActive));
-    }
-
-    [Fact]
-    public async Task ReactivateAsync_DriverNotFound_ReturnsFailure()
-    {
-        var id = _fixture.Create<Guid>();
-        _repository.GetByIdAsync(Arg.Any<Guid>()).Returns((Driver?)null);
-
-        var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
-        var result = await service.ReactivateAsync(id);
-
-        Assert.False(result.Succeeded);
-        Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
-        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Driver>());
-    }
-
-    [Fact]
-    public async Task ReactivateAsync_AlreadyActive_ReturnsFailure()
-    {
-        var request = _fixture.Create<UpsertDriverRequest>();
-
-        var driver = new Driver(
-            request.FullName,
-            request.PhoneNumber,
-            null,
-            null,
-            false,
-            request.DateStarted);
-
-        // Driver is active by default after construction
-        _repository.GetByIdAsync(Arg.Is(driver.Id)).Returns(driver);
-
-        var service = new DriverService(_validator, _repository, _fileRepository, _fileStorageService);
-        var result = await service.ReactivateAsync(driver.Id);
-
-        Assert.False(result.Succeeded);
-        Assert.Contains("already active", result.Error, StringComparison.OrdinalIgnoreCase);
-        await _repository.DidNotReceive().UpdateAsync(Arg.Any<Driver>());
+                                 d.FullName == updateRequest.FullName && d.PhoneNumber == updateRequest.PhoneNumber));
     }
 }

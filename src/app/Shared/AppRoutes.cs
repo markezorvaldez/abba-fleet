@@ -11,6 +11,13 @@ public static class AppRoutes
     public const string Trucks = "/trucks";
     public const string TruckDetail = "/trucks/{0}";
 
-    public static string DriverDetailFor(Guid id) => string.Format(DriverDetail, id);
-    public static string TruckDetailFor(Guid id) => string.Format(TruckDetail, id);
+    public static string DriverDetailFor(Guid id)
+    {
+        return string.Format(DriverDetail, id);
+    }
+
+    public static string TruckDetailFor(Guid id)
+    {
+        return string.Format(TruckDetail, id);
+    }
 }

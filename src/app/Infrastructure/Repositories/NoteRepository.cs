@@ -9,15 +9,17 @@ public class NoteRepository(IDbContextFactory<AppDbContext> dbFactory) : INoteRe
     public async Task<IReadOnlyList<Note>> GetByEntityAsync(NoteEntityType entityType, Guid entityId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
+
         return await db.Notes
-            .Where(n => n.EntityType == entityType && n.EntityId == entityId)
-            .OrderByDescending(n => n.CreatedAt)
-            .ToListAsync();
+                       .Where(n => n.EntityType == entityType && n.EntityId == entityId)
+                       .OrderByDescending(n => n.CreatedAt)
+                       .ToListAsync();
     }
 
     public async Task<Note?> GetByIdAsync(Guid id)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
+
         return await db.Notes.FindAsync(id);
     }
 

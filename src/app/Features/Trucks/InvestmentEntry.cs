@@ -5,20 +5,11 @@ public enum InvestmentType
     Purchase,
     Repair,
     Upgrade,
-    Other,
+    Other
 }
 
 public class InvestmentEntry
 {
-    public Guid Id { get; private set; }
-    public Guid TruckId { get; private set; }
-    public InvestmentType Type { get; private set; }
-    public decimal Amount { get; private set; }
-    public DateOnly Date { get; private set; }
-    public string? Description { get; private set; }
-    public string CreatedBy { get; private set; } = string.Empty;
-    public DateTimeOffset CreatedAt { get; private set; }
-
     private InvestmentEntry() { } // EF Core
 
     public InvestmentEntry(
@@ -53,4 +44,13 @@ public class InvestmentEntry
         CreatedBy = createdBy.Trim();
         CreatedAt = DateTimeOffset.UtcNow;
     }
+
+    public Guid Id { get; private set; }
+    public Guid TruckId { get; private set; }
+    public InvestmentType Type { get; private set; }
+    public decimal Amount { get; private set; }
+    public DateOnly Date { get; private set; }
+    public string? Description { get; private set; }
+    public string CreatedBy { get; private set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; private set; }
 }

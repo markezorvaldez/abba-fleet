@@ -1,6 +1,4 @@
 @page "/trucks/{Id:guid}"
-@using AbbaFleet.Shared
-@using AbbaFleet.Features.Trucks
 @attribute [Authorize]
 @rendermode InteractiveServer
 @inject ITruckService TruckService
@@ -10,15 +8,16 @@
 @inject IDialogService DialogService
 @inject ILogger<TruckDetail> Logger
 
-<MudDialogProvider />
-<MudSnackbarProvider />
-<MudPopoverProvider />
+<MudDialogProvider/>
+<MudSnackbarProvider/>
+<MudPopoverProvider/>
 
 <PageTitle>@(_truck?.PlateNumber ?? "Truck") — ABBA Fleet</PageTitle>
 
 @if (_notFound)
 {
     <MudText Typo="Typo.h5" Class="mb-4">Truck not found</MudText>
+
     <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
                OnClick="@(() => NavigationManager.NavigateTo(AppRoutes.Trucks))">
         Back to Trucks
@@ -28,7 +27,7 @@ else if (_truck is not null)
 {
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
         <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
-                       OnClick="@(() => NavigationManager.NavigateTo(AppRoutes.Trucks))" />
+                       OnClick="@(() => NavigationManager.NavigateTo(AppRoutes.Trucks))"/>
         <MudText Typo="Typo.h5">@_truck.PlateNumber</MudText>
         <MudChip T="string" Color="@(_truck.IsActive ? Color.Success : Color.Default)" Size="Size.Small">
             @(_truck.IsActive ? "Active" : "Inactive")
@@ -37,13 +36,14 @@ else if (_truck is not null)
                  Color="@(_truck.OwnershipType == OwnershipType.CompanyOwned ? Color.Primary : Color.Secondary)">
             @(_truck.OwnershipType == OwnershipType.CompanyOwned ? "Company Owned" : "Subcontracted")
         </MudChip>
-        <MudSpacer />
+        <MudSpacer/>
         @if (!_isEditing)
         {
             <MudButton Variant="Variant.Outlined" Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Edit" OnClick="EnterEditMode">
                 Edit
             </MudButton>
+
             @if (_truck.IsActive)
             {
                 <MudButton Variant="Variant.Outlined" Color="Color.Warning"
@@ -58,6 +58,7 @@ else if (_truck is not null)
                     Reactivate
                 </MudButton>
             }
+
             <MudButton Variant="Variant.Outlined" Color="Color.Error"
                        StartIcon="@Icons.Material.Filled.Delete" OnClick="ConfirmDelete">
                 Delete
@@ -72,11 +73,11 @@ else if (_truck is not null)
                 <MudGrid>
                     <MudItem xs="12" sm="6">
                         <MudTextField @bind-Value="_form.PlateNumber" Label="Plate Number" Required="true"
-                                      Counter="20" MaxLength="20" />
+                                      Counter="20" MaxLength="20"/>
                     </MudItem>
                     <MudItem xs="12" sm="6">
                         <MudTextField @bind-Value="_form.TruckModel" Label="Truck Model" Required="true"
-                                      Counter="100" MaxLength="100" />
+                                      Counter="100" MaxLength="100"/>
                     </MudItem>
                     <MudItem xs="12" sm="6">
                         <MudSelect T="OwnershipType" @bind-Value="_form.OwnershipType" Label="Ownership Type" Required="true">
@@ -94,15 +95,15 @@ else if (_truck is not null)
                     </MudItem>
                     <MudItem xs="12" sm="6">
                         <MudTextField @bind-Value="_form.DateAcquired" Label="Date Acquired"
-                                      InputType="InputType.Date" Required="true" />
+                                      InputType="InputType.Date" Required="true"/>
                     </MudItem>
                     <MudItem xs="6" sm="3">
-                        <MudCheckBox @bind-Value="_form.IsActive" Label="Active" />
+                        <MudCheckBox @bind-Value="_form.IsActive" Label="Active"/>
                     </MudItem>
                 </MudGrid>
             </MudCardContent>
             <MudCardActions>
-                <MudSpacer />
+                <MudSpacer/>
                 <MudButton OnClick="CancelEdit">Cancel</MudButton>
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="() => SaveEdit()">Save</MudButton>
             </MudCardActions>
@@ -133,10 +134,10 @@ else if (_truck is not null)
                                 <MudLink Href="@AppRoutes.DriverDetailFor(_truck.DriverId.Value)">@_truck.DriverName</MudLink>
                                 <MudIconButton Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small"
                                                Color="Color.Primary" title="Change Driver"
-                                               OnClick="OpenChangeDriverDialog" />
+                                               OnClick="OpenChangeDriverDialog"/>
                                 <MudIconButton Icon="@Icons.Material.Filled.PersonRemove" Size="Size.Small"
                                                Color="Color.Error" title="Remove Driver"
-                                               OnClick="OpenRemoveDriverDialog" />
+                                               OnClick="OpenRemoveDriverDialog"/>
                             </MudStack>
                         }
                         else
@@ -145,7 +146,7 @@ else if (_truck is not null)
                                 <MudText>No driver assigned</MudText>
                                 <MudIconButton Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Small"
                                                Color="Color.Primary" title="Assign Driver"
-                                               OnClick="OpenAssignDriverDialog" />
+                                               OnClick="OpenAssignDriverDialog"/>
                             </MudStack>
                         }
                     </MudItem>
@@ -172,18 +173,19 @@ else if (_truck is not null)
 
     <MudTabs Elevation="1" Rounded="true" Class="mt-4">
         <MudTabPanel Text="Investment Log">
-            <InvestmentPanel TruckId="Id" />
+            <InvestmentPanel TruckId="Id"/>
         </MudTabPanel>
         <MudTabPanel Text="Notes">
-            <NotePanel EntityType="NoteEntityType.Truck" EntityId="Id" />
+            <NotePanel EntityType="NoteEntityType.Truck" EntityId="Id"/>
         </MudTabPanel>
         <MudTabPanel Text="Files">
-            <FilePanel EntityType="NoteEntityType.Truck" EntityId="Id" />
+            <FilePanel EntityType="NoteEntityType.Truck" EntityId="Id"/>
         </MudTabPanel>
     </MudTabs>
 }
 
 @code {
+
     [Parameter]
     public Guid Id { get; set; }
 
@@ -198,6 +200,7 @@ else if (_truck is not null)
         if (!await PermissionService.HasAsync(Permission.ManageTrucks))
         {
             NavigationManager.NavigateTo(AppRoutes.Dashboard);
+
             return;
         }
 
@@ -218,6 +221,7 @@ else if (_truck is not null)
         }
 
         _driverOptions = [.. await TruckService.GetDriverOptionsAsync()];
+
         _form = new TruckForm
         {
             PlateNumber = _truck.PlateNumber,
@@ -227,22 +231,28 @@ else if (_truck is not null)
             IsActive = _truck.IsActive,
             DateAcquired = _truck.DateAcquired.ToString("yyyy-MM-dd")
         };
+
         _isEditing = true;
     }
 
-    private void CancelEdit() => _isEditing = false;
+    private void CancelEdit()
+    {
+        _isEditing = false;
+    }
 
     private async Task SaveEdit(bool forceDriverAssignment = false)
     {
         if (string.IsNullOrWhiteSpace(_form.PlateNumber) || string.IsNullOrWhiteSpace(_form.TruckModel))
         {
             Snackbar.Add("Plate number and truck model are required.", Severity.Warning);
+
             return;
         }
 
         if (!DateOnly.TryParse(_form.DateAcquired, out var dateAcquired))
         {
             Snackbar.Add("Date acquired is required.", Severity.Warning);
+
             return;
         }
 
@@ -301,6 +311,7 @@ else if (_truck is not null)
             }
 
             Snackbar.Add(result.Error ?? "Failed to update truck.", Severity.Error);
+
             return;
         }
 
@@ -386,6 +397,7 @@ else if (_truck is not null)
             }
 
             Snackbar.Add(result.Error ?? "Failed to assign driver.", Severity.Error);
+
             return;
         }
 
@@ -406,6 +418,7 @@ else if (_truck is not null)
 
         var dialog = await DialogService.ShowAsync<ConfirmReassignDialog>("Reassign Driver?", parameters);
         var dialogResult = await dialog.Result;
+
         return dialogResult is not null && !dialogResult.Canceled;
     }
 
@@ -438,6 +451,7 @@ else if (_truck is not null)
         if (!result.Succeeded)
         {
             Snackbar.Add(result.Error ?? "Failed to remove driver.", Severity.Error);
+
             return;
         }
 
@@ -471,6 +485,7 @@ else if (_truck is not null)
         if (!result.Succeeded)
         {
             Snackbar.Add(result.Error ?? "Failed to delete truck.", Severity.Error);
+
             return;
         }
 
@@ -510,6 +525,7 @@ else if (_truck is not null)
         if (!result.Succeeded)
         {
             Snackbar.Add(result.Error ?? "Failed to deactivate truck.", Severity.Error);
+
             return;
         }
 
@@ -541,6 +557,7 @@ else if (_truck is not null)
         if (!result.Succeeded)
         {
             Snackbar.Add(result.Error ?? "Failed to reactivate truck.", Severity.Error);
+
             return;
         }
 
@@ -557,4 +574,5 @@ else if (_truck is not null)
         public bool IsActive { get; set; } = true;
         public string DateAcquired { get; set; } = DateTime.Today.ToString("yyyy-MM-dd");
     }
+
 }

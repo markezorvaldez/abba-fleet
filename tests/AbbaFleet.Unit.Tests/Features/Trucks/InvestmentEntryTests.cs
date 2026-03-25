@@ -12,7 +12,56 @@ public class InvestmentEntryTests
     {
         var fixture = new Fixture();
         fixture.Register(() => DateOnly.FromDateTime(fixture.Create<DateTime>()));
+
         return fixture;
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Constructor_EmptyCreatedBy_Throws(string createdBy)
+    {
+        var truckId = _fixture.Create<Guid>();
+
+        Assert.Throws<ArgumentException>(() =>
+            new InvestmentEntry(truckId, InvestmentType.Repair, 100m, _fixture.Create<DateOnly>(), null, createdBy));
+    }
+
+    [Fact]
+    public void Constructor_EmptyTruckId_Throws()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            new InvestmentEntry(Guid.Empty, InvestmentType.Repair, 100m, _fixture.Create<DateOnly>(), null, "user"));
+    }
+
+    [Fact]
+    public void Constructor_NegativeAmount_Throws()
+    {
+        var truckId = _fixture.Create<Guid>();
+
+        Assert.Throws<ArgumentException>(() =>
+            new InvestmentEntry(truckId, InvestmentType.Repair, -50m, _fixture.Create<DateOnly>(), null, "user"));
+    }
+
+    [Fact]
+    public void Constructor_NullDescription_StaysNull()
+    {
+        var truckId = _fixture.Create<Guid>();
+
+        var entry = new InvestmentEntry(truckId, InvestmentType.Purchase, 1000m, _fixture.Create<DateOnly>(), null, "user");
+
+        Assert.Null(entry.Description);
+    }
+
+    [Fact]
+    public void Constructor_TrimsDescription()
+    {
+        var truckId = _fixture.Create<Guid>();
+        var desc = "  some description  ";
+
+        var entry = new InvestmentEntry(truckId, InvestmentType.Other, 100m, _fixture.Create<DateOnly>(), desc, "user");
+
+        Assert.Equal("some description", entry.Description);
     }
 
     [Fact]
@@ -38,59 +87,11 @@ public class InvestmentEntryTests
     }
 
     [Fact]
-    public void Constructor_TrimsDescription()
-    {
-        var truckId = _fixture.Create<Guid>();
-        var desc = "  some description  ";
-
-        var entry = new InvestmentEntry(truckId, InvestmentType.Other, 100m, _fixture.Create<DateOnly>(), desc, "user");
-
-        Assert.Equal("some description", entry.Description);
-    }
-
-    [Fact]
-    public void Constructor_NullDescription_StaysNull()
-    {
-        var truckId = _fixture.Create<Guid>();
-
-        var entry = new InvestmentEntry(truckId, InvestmentType.Purchase, 1000m, _fixture.Create<DateOnly>(), null, "user");
-
-        Assert.Null(entry.Description);
-    }
-
-    [Fact]
-    public void Constructor_EmptyTruckId_Throws()
-    {
-        Assert.Throws<ArgumentException>(() =>
-            new InvestmentEntry(Guid.Empty, InvestmentType.Repair, 100m, _fixture.Create<DateOnly>(), null, "user"));
-    }
-
-    [Fact]
     public void Constructor_ZeroAmount_Throws()
     {
         var truckId = _fixture.Create<Guid>();
 
         Assert.Throws<ArgumentException>(() =>
             new InvestmentEntry(truckId, InvestmentType.Repair, 0m, _fixture.Create<DateOnly>(), null, "user"));
-    }
-
-    [Fact]
-    public void Constructor_NegativeAmount_Throws()
-    {
-        var truckId = _fixture.Create<Guid>();
-
-        Assert.Throws<ArgumentException>(() =>
-            new InvestmentEntry(truckId, InvestmentType.Repair, -50m, _fixture.Create<DateOnly>(), null, "user"));
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void Constructor_EmptyCreatedBy_Throws(string createdBy)
-    {
-        var truckId = _fixture.Create<Guid>();
-
-        Assert.Throws<ArgumentException>(() =>
-            new InvestmentEntry(truckId, InvestmentType.Repair, 100m, _fixture.Create<DateOnly>(), null, createdBy));
     }
 }

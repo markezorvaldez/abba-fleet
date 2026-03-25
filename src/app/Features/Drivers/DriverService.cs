@@ -163,15 +163,18 @@ public class DriverService(
         return true;
     }
 
-    private static DriverDetailDto MapToDetail(Driver d) => new(
-        d.Id,
-        d.FullName,
-        d.PhoneNumber,
-        d.FacebookLink,
-        d.Address,
-        d.IsReliever,
-        d.IsActive,
-        d.DateStarted,
-        d.CreatedAt,
-        d.UpdatedAt);
+    private static DriverDetailDto MapToDetail(Driver d)
+    {
+        return new DriverDetailDto(
+            d.Id,
+            d.FullName,
+            d.PhoneNumber,
+            d.FacebookLink,
+            d.Address,
+            d.IsReliever,
+            d.IsActive,
+            d.DateStarted,
+            d.CreatedAt,
+            d.UpdatedAt);
+    }
 }

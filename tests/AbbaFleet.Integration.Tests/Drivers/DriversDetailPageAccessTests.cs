@@ -1,8 +1,6 @@
 using System.Net;
-using System.Security.Claims;
 using AbbaFleet.Infrastructure.Data;
 using AbbaFleet.Integration.Tests.Fixtures;
-using AbbaFleet.Shared;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -14,15 +12,26 @@ public class DriversDetailPageAccessTests(IntegrationTestFixture fixture)
 {
     private static readonly Guid TestDriverId = Guid.NewGuid();
 
-    [Fact]
-    public async Task DriverDetailPage_UnauthenticatedRequest_RedirectsToLogin()
+    private async Task CreateUserWithoutDriverPermissionAsync(string email, string password)
     {
-        var client = fixture.CreateClient();
+        using var scope = fixture.Factory.Services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
-        var response = await client.GetAsync($"/drivers/{TestDriverId}");
+        if (await userManager.FindByEmailAsync(email) is not null)
+        {
+            return;
+        }
 
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Contains("/account/login", response.Headers.Location?.ToString());
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            FullName = "Test User",
+            EmailConfirmed = true,
+            IsActive = true
+        };
+
+        await userManager.CreateAsync(user, password);
     }
 
     [Fact]
@@ -58,24 +67,14 @@ public class DriversDetailPageAccessTests(IntegrationTestFixture fixture)
         Assert.Equal("/", response.Headers.Location?.AbsolutePath);
     }
 
-    private async Task CreateUserWithoutDriverPermissionAsync(string email, string password)
+    [Fact]
+    public async Task DriverDetailPage_UnauthenticatedRequest_RedirectsToLogin()
     {
-        using var scope = fixture.Factory.Services.CreateScope();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var client = fixture.CreateClient();
 
-        if (await userManager.FindByEmailAsync(email) is not null)
-        {
-            return;
-        }
+        var response = await client.GetAsync($"/drivers/{TestDriverId}");
 
-        var user = new ApplicationUser
-        {
-            UserName = email,
-            Email = email,
-            FullName = "Test User",
-            EmailConfirmed = true,
-            IsActive = true
-        };
-        await userManager.CreateAsync(user, password);
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Contains("/account/login", response.Headers.Location?.ToString());
     }
 }

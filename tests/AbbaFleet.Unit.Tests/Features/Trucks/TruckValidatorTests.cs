@@ -13,22 +13,8 @@ public class TruckValidatorTests
     {
         var fixture = new Fixture();
         fixture.Register(() => DateOnly.FromDateTime(fixture.Create<DateTime>()));
+
         return fixture;
-    }
-
-    [Fact]
-    public void ValidRequest_Passes()
-    {
-        var request = new UpsertTruckRequest(
-            _fixture.Create<string>()[..10],
-            _fixture.Create<string>(),
-            OwnershipType.CompanyOwned,
-            null,
-            _fixture.Create<DateOnly>());
-
-        var result = _validator.Validate(request);
-
-        Assert.True(result.IsValid);
     }
 
     [Theory]
@@ -38,22 +24,6 @@ public class TruckValidatorTests
     {
         var request = new UpsertTruckRequest(
             plateNumber!,
-            _fixture.Create<string>(),
-            OwnershipType.CompanyOwned,
-            null,
-            _fixture.Create<DateOnly>());
-
-        var result = _validator.Validate(request);
-
-        Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.PropertyName == "PlateNumber");
-    }
-
-    [Fact]
-    public void PlateNumberTooLong_Fails()
-    {
-        var request = new UpsertTruckRequest(
-            new string('A', 21),
             _fixture.Create<string>(),
             OwnershipType.CompanyOwned,
             null,
@@ -84,6 +54,22 @@ public class TruckValidatorTests
     }
 
     [Fact]
+    public void PlateNumberTooLong_Fails()
+    {
+        var request = new UpsertTruckRequest(
+            new string('A', 21),
+            _fixture.Create<string>(),
+            OwnershipType.CompanyOwned,
+            null,
+            _fixture.Create<DateOnly>());
+
+        var result = _validator.Validate(request);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.PropertyName == "PlateNumber");
+    }
+
+    [Fact]
     public void TruckModelTooLong_Fails()
     {
         var request = new UpsertTruckRequest(
@@ -97,5 +83,20 @@ public class TruckValidatorTests
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, e => e.PropertyName == "TruckModel");
+    }
+
+    [Fact]
+    public void ValidRequest_Passes()
+    {
+        var request = new UpsertTruckRequest(
+            _fixture.Create<string>()[..10],
+            _fixture.Create<string>(),
+            OwnershipType.CompanyOwned,
+            null,
+            _fixture.Create<DateOnly>());
+
+        var result = _validator.Validate(request);
+
+        Assert.True(result.IsValid);
     }
 }

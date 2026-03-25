@@ -12,25 +12,25 @@ public class TruckConfiguration : IEntityTypeConfiguration<Truck>
         builder.HasKey(t => t.Id);
 
         builder.Property(t => t.PlateNumber)
-            .IsRequired()
-            .HasMaxLength(20);
+               .IsRequired()
+               .HasMaxLength(20);
 
         builder.Property(t => t.TruckModel)
-            .IsRequired()
-            .HasMaxLength(100);
+               .IsRequired()
+               .HasMaxLength(100);
 
         builder.Property(t => t.OwnershipType)
-            .IsRequired()
-            .HasConversion<string>()
-            .HasMaxLength(20);
+               .IsRequired()
+               .HasConversion<string>()
+               .HasMaxLength(20);
 
         builder.Property(t => t.DateAcquired)
-            .IsRequired();
+               .IsRequired();
 
         builder.HasOne<Driver>()
-            .WithMany()
-            .HasForeignKey(t => t.DriverId)
-            .OnDelete(DeleteBehavior.SetNull);
+               .WithMany()
+               .HasForeignKey(t => t.DriverId)
+               .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(t => t.PlateNumber).IsUnique();
         builder.HasIndex(t => t.IsActive);

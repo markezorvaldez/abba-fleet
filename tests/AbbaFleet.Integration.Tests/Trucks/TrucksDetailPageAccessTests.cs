@@ -12,15 +12,26 @@ public class TrucksDetailPageAccessTests(IntegrationTestFixture fixture)
 {
     private static readonly Guid TestTruckId = Guid.NewGuid();
 
-    [Fact]
-    public async Task TruckDetailPage_UnauthenticatedRequest_RedirectsToLogin()
+    private async Task CreateUserWithoutTruckPermissionAsync(string email, string password)
     {
-        var client = fixture.CreateClient();
+        using var scope = fixture.Factory.Services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
-        var response = await client.GetAsync($"/trucks/{TestTruckId}");
+        if (await userManager.FindByEmailAsync(email) is not null)
+        {
+            return;
+        }
 
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Contains("/account/login", response.Headers.Location?.ToString());
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            FullName = "Test User",
+            EmailConfirmed = true,
+            IsActive = true
+        };
+
+        await userManager.CreateAsync(user, password);
     }
 
     [Fact]
@@ -56,24 +67,14 @@ public class TrucksDetailPageAccessTests(IntegrationTestFixture fixture)
         Assert.Equal("/", response.Headers.Location?.AbsolutePath);
     }
 
-    private async Task CreateUserWithoutTruckPermissionAsync(string email, string password)
+    [Fact]
+    public async Task TruckDetailPage_UnauthenticatedRequest_RedirectsToLogin()
     {
-        using var scope = fixture.Factory.Services.CreateScope();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var client = fixture.CreateClient();
 
-        if (await userManager.FindByEmailAsync(email) is not null)
-        {
-            return;
-        }
+        var response = await client.GetAsync($"/trucks/{TestTruckId}");
 
-        var user = new ApplicationUser
-        {
-            UserName = email,
-            Email = email,
-            FullName = "Test User",
-            EmailConfirmed = true,
-            IsActive = true
-        };
-        await userManager.CreateAsync(user, password);
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Contains("/account/login", response.Headers.Location?.ToString());
     }
 }

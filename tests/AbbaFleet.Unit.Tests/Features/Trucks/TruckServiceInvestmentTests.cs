@@ -13,6 +13,13 @@ public class TruckServiceInvestmentTests
 {
     private readonly IFixture _fixture = CreateFixture();
 
+    private readonly ITruckRepository _repository = Substitute.For<ITruckRepository>();
+    private readonly IInvestmentRepository _investmentRepository = Substitute.For<IInvestmentRepository>();
+    private readonly IValidator<UpsertTruckRequest> _validator = Substitute.For<IValidator<UpsertTruckRequest>>();
+    private readonly IFileRepository _fileRepository = Substitute.For<IFileRepository>();
+    private readonly IFileStorageService _fileStorageService = Substitute.For<IFileStorageService>();
+    private readonly AuthenticationStateProvider _authStateProvider = Substitute.For<AuthenticationStateProvider>();
+
     private static Fixture CreateFixture()
     {
         var fixture = new Fixture();
@@ -21,20 +28,16 @@ public class TruckServiceInvestmentTests
         return fixture;
     }
 
-    private readonly ITruckRepository _repository = Substitute.For<ITruckRepository>();
-    private readonly IInvestmentRepository _investmentRepository = Substitute.For<IInvestmentRepository>();
-    private readonly IValidator<UpsertTruckRequest> _validator = Substitute.For<IValidator<UpsertTruckRequest>>();
-    private readonly IFileRepository _fileRepository = Substitute.For<IFileRepository>();
-    private readonly IFileStorageService _fileStorageService = Substitute.For<IFileStorageService>();
-    private readonly AuthenticationStateProvider _authStateProvider = Substitute.For<AuthenticationStateProvider>();
-
-    private TruckService CreateService() => new TruckService(
-        _validator,
-        _repository,
-        _investmentRepository,
-        _fileRepository,
-        _fileStorageService,
-        _authStateProvider);
+    private TruckService CreateService()
+    {
+        return new TruckService(
+            _validator,
+            _repository,
+            _investmentRepository,
+            _fileRepository,
+            _fileStorageService,
+            _authStateProvider);
+    }
 
     private void SetupCurrentUser(string userName)
     {
@@ -44,51 +47,52 @@ public class TruckServiceInvestmentTests
         _authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(state));
     }
 
-    // --- GetInvestmentsAsync ---
-
     [Fact]
-    public async Task GetInvestmentsAsync_ReturnsMappedEntriesAndTotal()
+    public async Task AddInvestmentAsync_NullUser_ReturnsFailure()
     {
         var truckId = _fixture.Create<Guid>();
-        var userName = _fixture.Create<string>();
-        var date = _fixture.Create<DateOnly>();
-        var entry1 = new InvestmentEntry(truckId, InvestmentType.Purchase, 100000m, date, "Initial purchase", userName);
-        var entry2 = new InvestmentEntry(truckId, InvestmentType.Repair, 2500m, date, "Tyre replacement", userName);
 
-        var entries = new List<InvestmentEntry>
-        {
-            entry1,
-            entry2
-        };
+        var truck = new Truck(
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            OwnershipType.CompanyOwned,
+            null,
+            _fixture.Create<DateOnly>());
 
-        var expectedTotal = 102500m;
+        _repository.GetByIdAsync(Arg.Any<Guid>()).Returns((truck, (string?)null));
 
-        _investmentRepository.GetByTruckIdAsync(Arg.Is(truckId)).Returns(entries);
-        _investmentRepository.GetTotalByTruckIdAsync(Arg.Is(truckId)).Returns(expectedTotal);
+        // Return an unauthenticated user (no Name claim)
+        var identity = new ClaimsIdentity();
+        var principal = new ClaimsPrincipal(identity);
+        var state = new AuthenticationState(principal);
+        _authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(state));
 
         var service = CreateService();
-        var (dtos, total) = await service.GetInvestmentsAsync(truckId);
 
-        Assert.Equal(2, dtos.Count);
-        Assert.Equal(entry1.Id, dtos[0].Id);
-        Assert.Equal(InvestmentType.Purchase, dtos[0].Type);
-        Assert.Equal(100000m, dtos[0].Amount);
-        Assert.Equal(entry2.Id, dtos[1].Id);
-        Assert.Equal(expectedTotal, total);
+        var result = await service.AddInvestmentAsync(
+            truckId,
+            new AddInvestmentRequest(InvestmentType.Purchase, 50000m, _fixture.Create<DateOnly>(), null));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("current user", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _investmentRepository.DidNotReceive().AddAsync(Arg.Any<InvestmentEntry>());
     }
 
     [Fact]
-    public async Task GetInvestmentsAsync_NoEntries_ReturnsEmptyListAndZero()
+    public async Task AddInvestmentAsync_TruckNotFound_ReturnsFailure()
     {
         var truckId = _fixture.Create<Guid>();
-        _investmentRepository.GetByTruckIdAsync(Arg.Is(truckId)).Returns(new List<InvestmentEntry>());
-        _investmentRepository.GetTotalByTruckIdAsync(Arg.Is(truckId)).Returns(0m);
+        _repository.GetByIdAsync(Arg.Is(truckId)).Returns(((Truck, string?)?)null);
 
         var service = CreateService();
-        var (dtos, total) = await service.GetInvestmentsAsync(truckId);
 
-        Assert.Empty(dtos);
-        Assert.Equal(0m, total);
+        var result = await service.AddInvestmentAsync(
+            truckId,
+            new AddInvestmentRequest(InvestmentType.Repair, 500m, _fixture.Create<DateOnly>(), null));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
+        await _investmentRepository.DidNotReceive().AddAsync(Arg.Any<InvestmentEntry>());
     }
 
     // --- AddInvestmentAsync ---
@@ -127,23 +131,6 @@ public class TruckServiceInvestmentTests
     }
 
     [Fact]
-    public async Task AddInvestmentAsync_TruckNotFound_ReturnsFailure()
-    {
-        var truckId = _fixture.Create<Guid>();
-        _repository.GetByIdAsync(Arg.Is(truckId)).Returns(((Truck, string?)?)null);
-
-        var service = CreateService();
-
-        var result = await service.AddInvestmentAsync(
-            truckId,
-            new AddInvestmentRequest(InvestmentType.Repair, 500m, _fixture.Create<DateOnly>(), null));
-
-        Assert.False(result.Succeeded);
-        Assert.Contains("not found", result.Error, StringComparison.OrdinalIgnoreCase);
-        await _investmentRepository.DidNotReceive().AddAsync(Arg.Any<InvestmentEntry>());
-    }
-
-    [Fact]
     public async Task AddInvestmentAsync_ZeroAmount_ReturnsFailure()
     {
         var truckId = _fixture.Create<Guid>();
@@ -169,33 +156,49 @@ public class TruckServiceInvestmentTests
     }
 
     [Fact]
-    public async Task AddInvestmentAsync_NullUser_ReturnsFailure()
+    public async Task GetInvestmentsAsync_NoEntries_ReturnsEmptyListAndZero()
     {
         var truckId = _fixture.Create<Guid>();
-
-        var truck = new Truck(
-            _fixture.Create<string>(),
-            _fixture.Create<string>(),
-            OwnershipType.CompanyOwned,
-            null,
-            _fixture.Create<DateOnly>());
-
-        _repository.GetByIdAsync(Arg.Any<Guid>()).Returns((truck, (string?)null));
-
-        // Return an unauthenticated user (no Name claim)
-        var identity = new System.Security.Claims.ClaimsIdentity();
-        var principal = new System.Security.Claims.ClaimsPrincipal(identity);
-        var state = new AuthenticationState(principal);
-        _authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(state));
+        _investmentRepository.GetByTruckIdAsync(Arg.Is(truckId)).Returns(new List<InvestmentEntry>());
+        _investmentRepository.GetTotalByTruckIdAsync(Arg.Is(truckId)).Returns(0m);
 
         var service = CreateService();
+        var (dtos, total) = await service.GetInvestmentsAsync(truckId);
 
-        var result = await service.AddInvestmentAsync(
-            truckId,
-            new AddInvestmentRequest(InvestmentType.Purchase, 50000m, _fixture.Create<DateOnly>(), null));
+        Assert.Empty(dtos);
+        Assert.Equal(0m, total);
+    }
 
-        Assert.False(result.Succeeded);
-        Assert.Contains("current user", result.Error, StringComparison.OrdinalIgnoreCase);
-        await _investmentRepository.DidNotReceive().AddAsync(Arg.Any<InvestmentEntry>());
+    // --- GetInvestmentsAsync ---
+
+    [Fact]
+    public async Task GetInvestmentsAsync_ReturnsMappedEntriesAndTotal()
+    {
+        var truckId = _fixture.Create<Guid>();
+        var userName = _fixture.Create<string>();
+        var date = _fixture.Create<DateOnly>();
+        var entry1 = new InvestmentEntry(truckId, InvestmentType.Purchase, 100000m, date, "Initial purchase", userName);
+        var entry2 = new InvestmentEntry(truckId, InvestmentType.Repair, 2500m, date, "Tyre replacement", userName);
+
+        var entries = new List<InvestmentEntry>
+        {
+            entry1,
+            entry2
+        };
+
+        var expectedTotal = 102500m;
+
+        _investmentRepository.GetByTruckIdAsync(Arg.Is(truckId)).Returns(entries);
+        _investmentRepository.GetTotalByTruckIdAsync(Arg.Is(truckId)).Returns(expectedTotal);
+
+        var service = CreateService();
+        var (dtos, total) = await service.GetInvestmentsAsync(truckId);
+
+        Assert.Equal(2, dtos.Count);
+        Assert.Equal(entry1.Id, dtos[0].Id);
+        Assert.Equal(InvestmentType.Purchase, dtos[0].Type);
+        Assert.Equal(100000m, dtos[0].Amount);
+        Assert.Equal(entry2.Id, dtos[1].Id);
+        Assert.Equal(expectedTotal, total);
     }
 }

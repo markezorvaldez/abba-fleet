@@ -9,10 +9,11 @@ public class InvestmentRepository(IDbContextFactory<AppDbContext> dbFactory) : I
     public async Task<IReadOnlyList<InvestmentEntry>> GetByTruckIdAsync(Guid truckId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
+
         return await db.InvestmentEntries
-            .Where(e => e.TruckId == truckId)
-            .OrderBy(e => e.Date)
-            .ToListAsync();
+                       .Where(e => e.TruckId == truckId)
+                       .OrderBy(e => e.Date)
+                       .ToListAsync();
     }
 
     public async Task AddAsync(InvestmentEntry entry)
@@ -25,8 +26,10 @@ public class InvestmentRepository(IDbContextFactory<AppDbContext> dbFactory) : I
     public async Task<decimal> GetTotalByTruckIdAsync(Guid truckId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
+
         return await db.InvestmentEntries
-            .Where(e => e.TruckId == truckId)
-            .SumAsync(e => (decimal?)e.Amount) ?? 0m;
+                       .Where(e => e.TruckId == truckId)
+                       .SumAsync(e => (decimal?)e.Amount)
+            ?? 0m;
     }
 }

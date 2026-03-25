@@ -7,8 +7,8 @@ namespace AbbaFleet.Infrastructure;
 
 public class R2FileStorageService : IFileStorageService, IDisposable
 {
-    private readonly Lazy<AmazonS3Client> _clientLazy;
     private readonly string _bucketName;
+    private readonly Lazy<AmazonS3Client> _clientLazy;
     private readonly ILogger<R2FileStorageService> _logger;
 
     public R2FileStorageService(IConfiguration configuration, ILogger<R2FileStorageService> logger)
@@ -27,11 +27,22 @@ public class R2FileStorageService : IFileStorageService, IDisposable
                 ServiceURL = endpoint,
                 ForcePathStyle = true
             };
+
             return new AmazonS3Client(new BasicAWSCredentials(accessKeyId, secretAccessKey), config);
         });
     }
 
     private AmazonS3Client Client => _clientLazy.Value;
+
+    public void Dispose()
+    {
+        if (_clientLazy.IsValueCreated)
+        {
+            _clientLazy.Value.Dispose();
+        }
+
+        GC.SuppressFinalize(this);
+    }
 
     public async Task<string> SaveAsync(Stream stream, string fileName, NoteEntityType entityType, Guid entityId)
     {
@@ -77,11 +88,13 @@ public class R2FileStorageService : IFileStorageService, IDisposable
             };
 
             var response = await Client.GetObjectAsync(request);
+
             return response.ResponseStream;
         }
         catch (AmazonS3Exception ex) when (ex.ErrorCode == "NoSuchKey")
         {
             _logger.LogWarning("R2 object not found: {Key}", storagePath);
+
             return null;
         }
     }
@@ -89,16 +102,7 @@ public class R2FileStorageService : IFileStorageService, IDisposable
     private static string SanitizeFileName(string fileName)
     {
         var invalid = Path.GetInvalidFileNameChars();
+
         return string.Concat(fileName.Select(c => invalid.Contains(c) ? '_' : c));
-    }
-
-    public void Dispose()
-    {
-        if (_clientLazy.IsValueCreated)
-        {
-            _clientLazy.Value.Dispose();
-        }
-
-        GC.SuppressFinalize(this);
     }
 }

@@ -1,7 +1,5 @@
 @page "/account/login"
 @layout LoginLayout
-@using AbbaFleet.Shared
-@using AbbaFleet.Features.Auth
 @inject IAuthService AuthService
 @inject NavigationManager NavigationManager
 
@@ -17,24 +15,27 @@
         }
 
         <form method="post" @formname="login">
-            <AntiforgeryToken />
+            <AntiforgeryToken/>
             <MudStack Spacing="3">
                 <div>
                     <MudText Typo="Typo.body2" Class="mb-1">Email</MudText>
-                    <input id="email" type="email" name="Input.Email" class="login-input" />
+                    <input id="email" type="email" name="Input.Email" class="login-input"/>
                 </div>
                 <div>
                     <MudText Typo="Typo.body2" Class="mb-1">Password</MudText>
-                    <input id="password" type="password" name="Input.Password" class="login-input" />
+                    <input id="password" type="password" name="Input.Password" class="login-input"/>
                 </div>
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled"
-                           Color="Color.Primary" FullWidth="true">Log in</MudButton>
+                           Color="Color.Primary" FullWidth="true">
+                    Log in
+                </MudButton>
             </MudStack>
         </form>
     </MudStack>
 </MudPaper>
 
 @code {
+
     [SupplyParameterFromForm(FormName = "login")]
     private LoginInput Input { get; set; } = default!;
 
@@ -52,12 +53,14 @@
         if (result.IsDeactivated)
         {
             ErrorMessage = "Your account has been deactivated. Please contact an administrator.";
+
             return;
         }
 
         if (!result.Succeeded)
         {
             ErrorMessage = "Invalid email or password.";
+
             return;
         }
 
@@ -69,4 +72,5 @@
         public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
     }
+
 }

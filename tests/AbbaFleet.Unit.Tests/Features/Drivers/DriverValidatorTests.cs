@@ -13,17 +13,18 @@ public class DriverValidatorTests
     {
         var fixture = new Fixture();
         fixture.Register(() => DateOnly.FromDateTime(fixture.Create<DateTime>()));
+
         return fixture;
     }
 
     [Fact]
-    public void ValidInput_Succeeds()
+    public void AddressExceeds100Chars_Fails()
     {
-        var request = _fixture.Create<UpsertDriverRequest>();
+        var request = _fixture.Create<UpsertDriverRequest>() with { Address = new string('A', 101) };
 
         var result = _validator.Validate(request);
 
-        Assert.True(result.IsValid);
+        Assert.False(result.IsValid);
     }
 
     [Theory]
@@ -51,26 +52,6 @@ public class DriverValidatorTests
     }
 
     [Fact]
-    public void FullNameExceeds100Chars_Fails()
-    {
-        var request = _fixture.Create<UpsertDriverRequest>() with { FullName = new string('A', 101) };
-
-        var result = _validator.Validate(request);
-
-        Assert.False(result.IsValid);
-    }
-
-    [Fact]
-    public void PhoneNumberExceeds100Chars_Fails()
-    {
-        var request = _fixture.Create<UpsertDriverRequest>() with { PhoneNumber = new string('1', 101) };
-
-        var result = _validator.Validate(request);
-
-        Assert.False(result.IsValid);
-    }
-
-    [Fact]
     public void FacebookLinkExceeds100Chars_Fails()
     {
         var request = _fixture.Create<UpsertDriverRequest>() with { FacebookLink = new string('A', 101) };
@@ -81,9 +62,9 @@ public class DriverValidatorTests
     }
 
     [Fact]
-    public void AddressExceeds100Chars_Fails()
+    public void FullNameExceeds100Chars_Fails()
     {
-        var request = _fixture.Create<UpsertDriverRequest>() with { Address = new string('A', 101) };
+        var request = _fixture.Create<UpsertDriverRequest>() with { FullName = new string('A', 101) };
 
         var result = _validator.Validate(request);
 
@@ -98,6 +79,26 @@ public class DriverValidatorTests
             FacebookLink = null,
             Address = null
         };
+
+        var result = _validator.Validate(request);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void PhoneNumberExceeds100Chars_Fails()
+    {
+        var request = _fixture.Create<UpsertDriverRequest>() with { PhoneNumber = new string('1', 101) };
+
+        var result = _validator.Validate(request);
+
+        Assert.False(result.IsValid);
+    }
+
+    [Fact]
+    public void ValidInput_Succeeds()
+    {
+        var request = _fixture.Create<UpsertDriverRequest>();
 
         var result = _validator.Validate(request);
 

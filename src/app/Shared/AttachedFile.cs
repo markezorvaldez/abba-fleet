@@ -2,17 +2,6 @@ namespace AbbaFleet.Shared;
 
 public class AttachedFile
 {
-    public Guid Id { get; private set; }
-    public Guid? NoteId { get; private set; }
-    public NoteEntityType EntityType { get; private set; }
-    public Guid EntityId { get; private set; }
-    public string FileName { get; private set; } = string.Empty;
-    public long FileSize { get; private set; }
-    public string ContentType { get; private set; } = string.Empty;
-    public string StoragePath { get; private set; } = string.Empty;
-    public string UploadedBy { get; private set; } = string.Empty;
-    public DateTimeOffset UploadedAt { get; private set; }
-
     private AttachedFile() { } // EF Core
 
     public AttachedFile(
@@ -51,4 +40,15 @@ public class AttachedFile
         UploadedBy = uploadedBy;
         UploadedAt = DateTimeOffset.UtcNow;
     }
+
+    public Guid Id { get; private set; }
+    public Guid? NoteId { get; private set; }
+    public NoteEntityType EntityType { get; private set; }
+    public Guid EntityId { get; private set; }
+    public string FileName { get; private set; } = string.Empty;
+    public long FileSize { get; private set; }
+    public string ContentType { get; private set; } = string.Empty;
+    public string StoragePath { get; private set; } = string.Empty;
+    public string UploadedBy { get; private set; } = string.Empty;
+    public DateTimeOffset UploadedAt { get; private set; }
 }

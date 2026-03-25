@@ -10,6 +10,28 @@ namespace AbbaFleet.Integration.Tests.Auth;
 [Collection("Integration")]
 public class LoginIsActiveTests(IntegrationTestFixture fixture)
 {
+    private async Task CreateUserAsync(string email, bool isActive)
+    {
+        using var scope = fixture.Factory.Services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+        if (await userManager.FindByEmailAsync(email) is not null)
+        {
+            return;
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            FullName = "Test User",
+            EmailConfirmed = true,
+            IsActive = isActive
+        };
+
+        await userManager.CreateAsync(user, IntegrationTestFixture.AdminPassword);
+    }
+
     [Fact]
     public async Task Login_WithDeactivatedUser_ShowsDeactivatedMessage()
     {
@@ -44,24 +66,5 @@ public class LoginIsActiveTests(IntegrationTestFixture fixture)
 
         Assert.NotNull(user!.LastLoginAt);
         Assert.True(user.LastLoginAt >= before);
-    }
-
-    private async Task CreateUserAsync(string email, bool isActive)
-    {
-        using var scope = fixture.Factory.Services.CreateScope();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-        if (await userManager.FindByEmailAsync(email) is not null)
-        {
-            return;
-        }
-        var user = new ApplicationUser
-        {
-            UserName = email,
-            Email = email,
-            FullName = "Test User",
-            EmailConfirmed = true,
-            IsActive = isActive
-        };
-        await userManager.CreateAsync(user, IntegrationTestFixture.AdminPassword);
     }
 }

@@ -30,6 +30,7 @@ public class PermissionService(
         }
 
         var permissions = await _loadTask;
+
         return permissions.Contains(permission);
     }
 
@@ -37,6 +38,7 @@ public class PermissionService(
     {
         var state = await authStateProvider.GetAuthenticationStateAsync();
         var userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
         if (userId is null)
         {
             return new HashSet<Permission>();
@@ -46,17 +48,19 @@ public class PermissionService(
         using var scope = serviceProvider.CreateScope();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var user = await userManager.FindByIdAsync(userId);
+
         if (user is not { IsActive: true })
         {
             return new HashSet<Permission>();
         }
 
         var claims = await userManager.GetClaimsAsync(user);
+
         return claims
-            .Where(c => c.Type == PermissionClaimTypes.Permission)
-            .Select(c => Enum.TryParse<Permission>(c.Value, out var p) ? (Permission?)p : null)
-            .Where(p => p.HasValue)
-            .Select(p => p!.Value)
-            .ToHashSet();
+               .Where(c => c.Type == PermissionClaimTypes.Permission)
+               .Select(c => Enum.TryParse<Permission>(c.Value, out var p) ? (Permission?)p : null)
+               .Where(p => p.HasValue)
+               .Select(p => p!.Value)
+               .ToHashSet();
     }
 }

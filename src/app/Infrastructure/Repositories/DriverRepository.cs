@@ -9,14 +9,16 @@ public class DriverRepository(IDbContextFactory<AppDbContext> dbFactory) : IDriv
     public async Task<IReadOnlyList<Driver>> GetAllAsync()
     {
         await using var db = await dbFactory.CreateDbContextAsync();
+
         return await db.Drivers
-            .OrderBy(d => d.FullName)
-            .ToListAsync();
+                       .OrderBy(d => d.FullName)
+                       .ToListAsync();
     }
 
     public async Task<Driver?> GetByIdAsync(Guid id)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
+
         return await db.Drivers.FindAsync(id);
     }
 

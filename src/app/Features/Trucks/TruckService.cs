@@ -162,6 +162,7 @@ public class TruckService(
         // TODO: When Trip/Expense entities exist, check for associated records before allowing delete.
 
         var files = await fileRepository.GetByEntityAsync(NoteEntityType.Truck, id);
+
         foreach (var file in files)
         {
             await fileStorageService.DeleteAsync(file.StoragePath);
@@ -374,24 +375,30 @@ public class TruckService(
         return state.User.FindFirstValue(ClaimTypes.Name);
     }
 
-    private static InvestmentDto MapToInvestmentDto(InvestmentEntry e) => new(
-        e.Id,
-        e.Type,
-        e.Amount,
-        e.Date,
-        e.Description,
-        e.CreatedBy,
-        e.CreatedAt);
+    private static InvestmentDto MapToInvestmentDto(InvestmentEntry e)
+    {
+        return new InvestmentDto(
+            e.Id,
+            e.Type,
+            e.Amount,
+            e.Date,
+            e.Description,
+            e.CreatedBy,
+            e.CreatedAt);
+    }
 
-    private static TruckDetailDto MapToDetail(Truck t, string? driverName) => new(
-        t.Id,
-        t.PlateNumber,
-        t.TruckModel,
-        t.OwnershipType,
-        t.DriverId,
-        driverName,
-        t.IsActive,
-        t.DateAcquired,
-        t.CreatedAt,
-        t.UpdatedAt);
+    private static TruckDetailDto MapToDetail(Truck t, string? driverName)
+    {
+        return new TruckDetailDto(
+            t.Id,
+            t.PlateNumber,
+            t.TruckModel,
+            t.OwnershipType,
+            t.DriverId,
+            driverName,
+            t.IsActive,
+            t.DateAcquired,
+            t.CreatedAt,
+            t.UpdatedAt);
+    }
 }

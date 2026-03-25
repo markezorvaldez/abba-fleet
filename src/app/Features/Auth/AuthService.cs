@@ -17,9 +17,11 @@ public class AuthService(
         }
 
         var user = await userManager.FindByEmailAsync(email);
+
         if (user is not null && !user.IsActive)
         {
             await signInManager.SignOutAsync();
+
             return new LoginResult(false, IsDeactivated: true);
         }
 

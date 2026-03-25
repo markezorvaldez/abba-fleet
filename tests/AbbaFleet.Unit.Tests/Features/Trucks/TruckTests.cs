@@ -12,21 +12,20 @@ public class TruckTests
     {
         var fixture = new Fixture();
         fixture.Register(() => DateOnly.FromDateTime(fixture.Create<DateTime>()));
+
         return fixture;
     }
 
-    [Fact]
-    public void Create_TrimsWhitespace()
+    // --- Update ---
+
+    private Truck CreateTruck()
     {
-        var plate = _fixture.Create<string>();
-        var model = _fixture.Create<string>();
-
-        var truck = new Truck(
-            $"  {plate}  ", $"  {model}  ",
-            OwnershipType.CompanyOwned, null, _fixture.Create<DateOnly>());
-
-        Assert.Equal(plate, truck.PlateNumber);
-        Assert.Equal(model, truck.TruckModel);
+        return new Truck(
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            OwnershipType.CompanyOwned,
+            null,
+            _fixture.Create<DateOnly>());
     }
 
     [Fact]
@@ -52,8 +51,12 @@ public class TruckTests
     public void Create_ThrowsOnEmptyPlateNumber(string plateNumber)
     {
         Assert.Throws<ArgumentException>(() =>
-            new Truck(plateNumber, _fixture.Create<string>(),
-                OwnershipType.CompanyOwned, null, _fixture.Create<DateOnly>()));
+            new Truck(
+                plateNumber,
+                _fixture.Create<string>(),
+                OwnershipType.CompanyOwned,
+                null,
+                _fixture.Create<DateOnly>()));
     }
 
     [Theory]
@@ -62,16 +65,30 @@ public class TruckTests
     public void Create_ThrowsOnEmptyTruckModel(string truckModel)
     {
         Assert.Throws<ArgumentException>(() =>
-            new Truck(_fixture.Create<string>(), truckModel,
-                OwnershipType.CompanyOwned, null, _fixture.Create<DateOnly>()));
+            new Truck(
+                _fixture.Create<string>(),
+                truckModel,
+                OwnershipType.CompanyOwned,
+                null,
+                _fixture.Create<DateOnly>()));
     }
 
-    // --- Update ---
+    [Fact]
+    public void Create_TrimsWhitespace()
+    {
+        var plate = _fixture.Create<string>();
+        var model = _fixture.Create<string>();
 
-    private Truck CreateTruck() =>
-        new Truck(
-            _fixture.Create<string>(), _fixture.Create<string>(),
-            OwnershipType.CompanyOwned, null, _fixture.Create<DateOnly>());
+        var truck = new Truck(
+            $"  {plate}  ",
+            $"  {model}  ",
+            OwnershipType.CompanyOwned,
+            null,
+            _fixture.Create<DateOnly>());
+
+        Assert.Equal(plate, truck.PlateNumber);
+        Assert.Equal(model, truck.TruckModel);
+    }
 
     [Fact]
     public void Update_SetsAllFields()
@@ -82,8 +99,13 @@ public class TruckTests
         var newDate = _fixture.Create<DateOnly>();
         var newDriverId = _fixture.Create<Guid>();
 
-        truck.Update(newPlate, newModel, OwnershipType.Subcontracted,
-            newDriverId, isActive: false, newDate);
+        truck.Update(
+            newPlate,
+            newModel,
+            OwnershipType.Subcontracted,
+            newDriverId,
+            isActive: false,
+            newDate);
 
         Assert.Equal(newPlate, truck.PlateNumber);
         Assert.Equal(newModel, truck.TruckModel);
@@ -94,27 +116,18 @@ public class TruckTests
     }
 
     [Fact]
-    public void Update_TrimsWhitespace()
-    {
-        var truck = CreateTruck();
-        var newPlate = _fixture.Create<string>();
-        var newModel = _fixture.Create<string>();
-
-        truck.Update($"  {newPlate}  ", $"  {newModel}  ",
-            OwnershipType.CompanyOwned, null, true, _fixture.Create<DateOnly>());
-
-        Assert.Equal(newPlate, truck.PlateNumber);
-        Assert.Equal(newModel, truck.TruckModel);
-    }
-
-    [Fact]
     public void Update_SetsUpdatedAt()
     {
         var truck = CreateTruck();
         var beforeUpdate = truck.UpdatedAt;
 
-        truck.Update(_fixture.Create<string>(), _fixture.Create<string>(),
-            OwnershipType.CompanyOwned, null, true, _fixture.Create<DateOnly>());
+        truck.Update(
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            OwnershipType.CompanyOwned,
+            null,
+            true,
+            _fixture.Create<DateOnly>());
 
         Assert.True(truck.UpdatedAt >= beforeUpdate);
     }
@@ -127,8 +140,13 @@ public class TruckTests
         var truck = CreateTruck();
 
         Assert.Throws<ArgumentException>(() =>
-            truck.Update(plateNumber, _fixture.Create<string>(),
-                OwnershipType.CompanyOwned, null, true, _fixture.Create<DateOnly>()));
+            truck.Update(
+                plateNumber,
+                _fixture.Create<string>(),
+                OwnershipType.CompanyOwned,
+                null,
+                true,
+                _fixture.Create<DateOnly>()));
     }
 
     [Theory]
@@ -139,7 +157,31 @@ public class TruckTests
         var truck = CreateTruck();
 
         Assert.Throws<ArgumentException>(() =>
-            truck.Update(_fixture.Create<string>(), truckModel,
-                OwnershipType.CompanyOwned, null, true, _fixture.Create<DateOnly>()));
+            truck.Update(
+                _fixture.Create<string>(),
+                truckModel,
+                OwnershipType.CompanyOwned,
+                null,
+                true,
+                _fixture.Create<DateOnly>()));
+    }
+
+    [Fact]
+    public void Update_TrimsWhitespace()
+    {
+        var truck = CreateTruck();
+        var newPlate = _fixture.Create<string>();
+        var newModel = _fixture.Create<string>();
+
+        truck.Update(
+            $"  {newPlate}  ",
+            $"  {newModel}  ",
+            OwnershipType.CompanyOwned,
+            null,
+            true,
+            _fixture.Create<DateOnly>());
+
+        Assert.Equal(newPlate, truck.PlateNumber);
+        Assert.Equal(newModel, truck.TruckModel);
     }
 }

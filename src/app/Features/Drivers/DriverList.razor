@@ -1,6 +1,4 @@
 @page "/drivers"
-@using AbbaFleet.Shared
-@using AbbaFleet.Features.Drivers
 @attribute [Authorize]
 @rendermode InteractiveServer
 @inject IDriverService DriverService
@@ -8,9 +6,9 @@
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 
-<MudDialogProvider />
-<MudSnackbarProvider />
-<MudPopoverProvider />
+<MudDialogProvider/>
+<MudSnackbarProvider/>
+<MudPopoverProvider/>
 
 <PageTitle>Drivers — ABBA Fleet</PageTitle>
 
@@ -18,22 +16,26 @@
 
 <MudStack Row="true" Spacing="3" AlignItems="AlignItems.End" Class="mb-4">
     <MudTextField @bind-Value="_search" Placeholder="Search name or phone..." Adornment="Adornment.Start"
-                  AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true" Class="flex-grow-1" />
+                  AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true" Class="flex-grow-1"/>
     <MudToggleGroup T="string" @bind-Value="_activeFilter" Style="flex-shrink: 0;">
-        <MudToggleItem Value="@("All")" Text="All" />
-        <MudToggleItem Value="@("Active")" Text="Active" />
-        <MudToggleItem Value="@("Inactive")" Text="Inactive" />
+        <MudToggleItem Value="@("All")" Text="All"/>
+        <MudToggleItem Value="@("Active")" Text="Active"/>
+        <MudToggleItem Value="@("Inactive")" Text="Inactive"/>
     </MudToggleGroup>
     <MudToggleGroup T="string" @bind-Value="_relieverFilter" Style="flex-shrink: 0;">
-        <MudToggleItem Value="@("All")" Text="All" />
-        <MudToggleItem Value="@("Yes")" Text="Reliever" />
-        <MudToggleItem Value="@("No")" Text="Non-reliever" />
+        <MudToggleItem Value="@("All")" Text="All"/>
+        <MudToggleItem Value="@("Yes")" Text="Reliever"/>
+        <MudToggleItem Value="@("No")" Text="Non-reliever"/>
     </MudToggleGroup>
     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenAddDialog">Add Driver</MudButton>
 </MudStack>
 
 <MudTable Items="FilteredDrivers" Hover="true" Striped="true" Loading="_loading" T="DriverSummary"
-          OnRowClick="@(args => { if (args.Item is not null) NavigationManager.NavigateTo(AppRoutes.DriverDetailFor(args.Item.Id)); })"
+          OnRowClick="@(args =>
+                      {
+                          if (args.Item is not null)
+                              NavigationManager.NavigateTo(AppRoutes.DriverDetailFor(args.Item.Id));
+                      })"
           RowStyle="cursor: pointer;">
     <HeaderContent>
         <MudTh>Full Name</MudTh>
@@ -48,7 +50,7 @@
         <MudTd>
             @if (context.IsReliever)
             {
-                <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
+                <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small"/>
             }
         </MudTd>
         <MudTd>
@@ -66,13 +68,13 @@
     </TitleContent>
     <DialogContent>
         <MudStack Spacing="3">
-            <MudTextField @bind-Value="_form.FullName" Label="Full Name" Required="true" Counter="100" MaxLength="100" />
-            <MudTextField @bind-Value="_form.PhoneNumber" Label="Phone Number" Required="true" Counter="100" MaxLength="100" />
-            <MudTextField @bind-Value="_form.FacebookLink" Label="Facebook Link" Counter="100" MaxLength="100" />
-            <MudTextField @bind-Value="_form.Address" Label="Address" Counter="100" MaxLength="100" />
-            <MudTextField @bind-Value="_form.DateStarted" Label="Date Started" InputType="InputType.Date" Required="true" />
-            <MudCheckBox @bind-Value="_form.IsActive" Label="Active" />
-            <MudCheckBox @bind-Value="_form.IsReliever" Label="Reliever (backup driver)" />
+            <MudTextField @bind-Value="_form.FullName" Label="Full Name" Required="true" Counter="100" MaxLength="100"/>
+            <MudTextField @bind-Value="_form.PhoneNumber" Label="Phone Number" Required="true" Counter="100" MaxLength="100"/>
+            <MudTextField @bind-Value="_form.FacebookLink" Label="Facebook Link" Counter="100" MaxLength="100"/>
+            <MudTextField @bind-Value="_form.Address" Label="Address" Counter="100" MaxLength="100"/>
+            <MudTextField @bind-Value="_form.DateStarted" Label="Date Started" InputType="InputType.Date" Required="true"/>
+            <MudCheckBox @bind-Value="_form.IsActive" Label="Active"/>
+            <MudCheckBox @bind-Value="_form.IsReliever" Label="Reliever (backup driver)"/>
         </MudStack>
     </DialogContent>
     <DialogActions>
@@ -98,27 +100,28 @@
     };
 
     private IEnumerable<DriverSummary> FilteredDrivers => _drivers
-        .Where(d => string.IsNullOrEmpty(_search)
-            || d.FullName.Contains(_search, StringComparison.OrdinalIgnoreCase)
-            || d.PhoneNumber.Contains(_search, StringComparison.OrdinalIgnoreCase))
-        .Where(d => _activeFilter switch
-        {
-            "Active" => d.IsActive,
-            "Inactive" => !d.IsActive,
-            _ => true
-        })
-        .Where(d => _relieverFilter switch
-        {
-            "Yes" => d.IsReliever,
-            "No" => !d.IsReliever,
-            _ => true
-        });
+                                                          .Where(d => string.IsNullOrEmpty(_search)
+                                                              || d.FullName.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                                                              || d.PhoneNumber.Contains(_search, StringComparison.OrdinalIgnoreCase))
+                                                          .Where(d => _activeFilter switch
+                                                          {
+                                                              "Active" => d.IsActive,
+                                                              "Inactive" => !d.IsActive,
+                                                              _ => true
+                                                          })
+                                                          .Where(d => _relieverFilter switch
+                                                          {
+                                                              "Yes" => d.IsReliever,
+                                                              "No" => !d.IsReliever,
+                                                              _ => true
+                                                          });
 
     protected override async Task OnInitializedAsync()
     {
         if (!await PermissionService.HasAsync(Permission.ManageDrivers))
         {
             NavigationManager.NavigateTo(AppRoutes.Dashboard);
+
             return;
         }
 
@@ -138,19 +141,24 @@
         _dialogVisible = true;
     }
 
-    private void CloseDialog() => _dialogVisible = false;
+    private void CloseDialog()
+    {
+        _dialogVisible = false;
+    }
 
     private async Task CreateDriver()
     {
         if (string.IsNullOrWhiteSpace(_form.FullName) || string.IsNullOrWhiteSpace(_form.PhoneNumber))
         {
             Snackbar.Add("Full name and phone number are required.", Severity.Warning);
+
             return;
         }
 
         if (!DateOnly.TryParse(_form.DateStarted, out var dateStarted))
         {
             Snackbar.Add("Date started is required.", Severity.Warning);
+
             return;
         }
 
@@ -167,6 +175,7 @@
         if (!result.Succeeded)
         {
             Snackbar.Add(result.Error ?? "Failed to add driver.", Severity.Error);
+
             return;
         }
 
@@ -185,4 +194,5 @@
         public bool IsReliever { get; set; }
         public string DateStarted { get; set; } = DateTime.Today.ToString("yyyy-MM-dd");
     }
+
 }

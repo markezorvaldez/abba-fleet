@@ -82,13 +82,16 @@ public class FileService(
         return null;
     }
 
-    private static FileDto MapToDto(AttachedFile f) => new(
-        f.Id,
-        f.NoteId,
-        null,
-        f.FileName,
-        f.FileSize,
-        f.ContentType,
-        f.UploadedBy,
-        f.UploadedAt);
+    private static FileDto MapToDto(AttachedFile f)
+    {
+        return new FileDto(
+            f.Id,
+            f.NoteId,
+            null,
+            f.FileName,
+            f.FileSize,
+            f.ContentType,
+            f.UploadedBy,
+            f.UploadedAt);
+    }
 }

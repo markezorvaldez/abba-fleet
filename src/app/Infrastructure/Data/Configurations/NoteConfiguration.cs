@@ -11,28 +11,32 @@ public class NoteConfiguration : IEntityTypeConfiguration<Note>
         builder.HasKey(n => n.Id);
 
         builder.Property(n => n.EntityType)
-            .IsRequired()
-            .HasConversion<string>()
-            .HasMaxLength(20);
+               .IsRequired()
+               .HasConversion<string>()
+               .HasMaxLength(20);
 
         builder.Property(n => n.EntityId)
-            .IsRequired();
+               .IsRequired();
 
         builder.Property(n => n.Title)
-            .IsRequired()
-            .HasMaxLength(200);
+               .IsRequired()
+               .HasMaxLength(200);
 
         builder.Property(n => n.Body)
-            .IsRequired()
-            .HasMaxLength(4000);
+               .IsRequired()
+               .HasMaxLength(4000);
 
         builder.Property(n => n.CreatedBy)
-            .IsRequired()
-            .HasMaxLength(100);
+               .IsRequired()
+               .HasMaxLength(100);
 
         builder.Property(n => n.ModifiedBy)
-            .HasMaxLength(100);
+               .HasMaxLength(100);
 
-        builder.HasIndex(n => new { n.EntityType, n.EntityId });
+        builder.HasIndex(n => new
+        {
+            n.EntityType,
+            n.EntityId
+        });
     }
 }

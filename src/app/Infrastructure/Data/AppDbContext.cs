@@ -9,12 +9,12 @@ namespace AbbaFleet.Infrastructure.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbContext<ApplicationUser>(options), IDataProtectionKeyContext
 {
-    public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
     public DbSet<Driver> Drivers { get; set; }
     public DbSet<Truck> Trucks { get; set; }
     public DbSet<Note> Notes { get; set; }
     public DbSet<InvestmentEntry> InvestmentEntries { get; set; }
     public DbSet<AttachedFile> AttachedFiles { get; set; }
+    public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

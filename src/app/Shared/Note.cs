@@ -2,19 +2,14 @@ namespace AbbaFleet.Shared;
 
 public class Note
 {
-    public Guid Id { get; private set; }
-    public NoteEntityType EntityType { get; private set; }
-    public Guid EntityId { get; private set; }
-    public string Title { get; private set; } = string.Empty;
-    public string Body { get; private set; } = string.Empty;
-    public string CreatedBy { get; private set; } = string.Empty;
-    public DateTimeOffset CreatedAt { get; private set; }
-    public string? ModifiedBy { get; private set; }
-    public DateTimeOffset? ModifiedAt { get; private set; }
-
     private Note() { } // EF Core
 
-    public Note(NoteEntityType entityType, Guid entityId, string title, string body, string createdBy)
+    public Note(
+        NoteEntityType entityType,
+        Guid entityId,
+        string title,
+        string body,
+        string createdBy)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(title, nameof(title));
         ArgumentException.ThrowIfNullOrWhiteSpace(body, nameof(body));
@@ -36,6 +31,16 @@ public class Note
         CreatedBy = createdBy;
         CreatedAt = DateTimeOffset.UtcNow;
     }
+
+    public Guid Id { get; private set; }
+    public NoteEntityType EntityType { get; private set; }
+    public Guid EntityId { get; private set; }
+    public string Title { get; private set; } = string.Empty;
+    public string Body { get; private set; } = string.Empty;
+    public string CreatedBy { get; private set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; private set; }
+    public string? ModifiedBy { get; private set; }
+    public DateTimeOffset? ModifiedAt { get; private set; }
 
     public void Update(string title, string body, string modifiedBy)
     {

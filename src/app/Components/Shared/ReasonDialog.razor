@@ -1,5 +1,3 @@
-@using MudBlazor
-
 <MudDialog>
     <TitleContent>
         <MudText Typo="Typo.h6">@Title</MudText>
@@ -11,7 +9,7 @@
                 <MudAlert Severity="Severity.Warning">@WarningText</MudAlert>
             }
             <MudTextField @bind-Value="_reason" Label="Reason" Required="true" Lines="3"
-                          Placeholder="Please provide a reason..." />
+                          Placeholder="Please provide a reason..."/>
         </MudStack>
     </DialogContent>
     <DialogActions>
@@ -24,6 +22,7 @@
 </MudDialog>
 
 @code {
+
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = null!;
 
@@ -38,7 +37,14 @@
 
     private string _reason = string.Empty;
 
-    private void Cancel() => MudDialog.Cancel();
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
 
-    private void Submit() => MudDialog.Close(DialogResult.Ok(_reason));
+    private void Submit()
+    {
+        MudDialog.Close(DialogResult.Ok(_reason));
+    }
+
 }

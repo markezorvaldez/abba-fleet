@@ -1,6 +1,4 @@
 @page "/trucks"
-@using AbbaFleet.Shared
-@using AbbaFleet.Features.Trucks
 @attribute [Authorize]
 @rendermode InteractiveServer
 @inject ITruckService TruckService
@@ -9,9 +7,9 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 
-<MudDialogProvider />
-<MudSnackbarProvider />
-<MudPopoverProvider />
+<MudDialogProvider/>
+<MudSnackbarProvider/>
+<MudPopoverProvider/>
 
 <PageTitle>Trucks — ABBA Fleet</PageTitle>
 
@@ -19,22 +17,26 @@
 
 <MudStack Row="true" Spacing="3" AlignItems="AlignItems.End" Class="mb-4">
     <MudTextField @bind-Value="_search" Placeholder="Search plate or model..." Adornment="Adornment.Start"
-                  AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true" Class="flex-grow-1" />
+                  AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true" Class="flex-grow-1"/>
     <MudToggleGroup T="string" @bind-Value="_ownershipFilter" Style="flex-shrink: 0;">
-        <MudToggleItem Value="@("All")" Text="All" />
-        <MudToggleItem Value="@("Company")" Text="Company" />
-        <MudToggleItem Value="@("Subcontracted")" Text="Subcontracted" />
+        <MudToggleItem Value="@("All")" Text="All"/>
+        <MudToggleItem Value="@("Company")" Text="Company"/>
+        <MudToggleItem Value="@("Subcontracted")" Text="Subcontracted"/>
     </MudToggleGroup>
     <MudToggleGroup T="string" @bind-Value="_activeFilter" Style="flex-shrink: 0;">
-        <MudToggleItem Value="@("All")" Text="All" />
-        <MudToggleItem Value="@("Active")" Text="Active" />
-        <MudToggleItem Value="@("Inactive")" Text="Inactive" />
+        <MudToggleItem Value="@("All")" Text="All"/>
+        <MudToggleItem Value="@("Active")" Text="Active"/>
+        <MudToggleItem Value="@("Inactive")" Text="Inactive"/>
     </MudToggleGroup>
     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenAddDialog">Add Truck</MudButton>
 </MudStack>
 
 <MudTable Items="FilteredTrucks" Hover="true" Striped="true" Loading="_loading" T="TruckSummary"
-          OnRowClick="@(args => { if (args.Item is not null) NavigationManager.NavigateTo(AppRoutes.TruckDetailFor(args.Item.Id)); })"
+          OnRowClick="@(args =>
+                      {
+                          if (args.Item is not null)
+                              NavigationManager.NavigateTo(AppRoutes.TruckDetailFor(args.Item.Id));
+                      })"
           RowStyle="cursor: pointer;">
     <HeaderContent>
         <MudTh>Plate Number</MudTh>
@@ -67,8 +69,8 @@
     </TitleContent>
     <DialogContent>
         <MudStack Spacing="3">
-            <MudTextField @bind-Value="_form.PlateNumber" Label="Plate Number" Required="true" Counter="20" MaxLength="20" />
-            <MudTextField @bind-Value="_form.TruckModel" Label="Truck Model" Required="true" Counter="100" MaxLength="100" />
+            <MudTextField @bind-Value="_form.PlateNumber" Label="Plate Number" Required="true" Counter="20" MaxLength="20"/>
+            <MudTextField @bind-Value="_form.TruckModel" Label="Truck Model" Required="true" Counter="100" MaxLength="100"/>
             <MudSelect T="OwnershipType" @bind-Value="_form.OwnershipType" Label="Ownership Type" Required="true">
                 <MudSelectItem Value="OwnershipType.CompanyOwned">Company Owned</MudSelectItem>
                 <MudSelectItem Value="OwnershipType.Subcontracted">Subcontracted</MudSelectItem>
@@ -79,8 +81,8 @@
                     <MudSelectItem T="Guid?" Value="@driver.Id">@driver.Label</MudSelectItem>
                 }
             </MudSelect>
-            <MudTextField @bind-Value="_form.DateAcquired" Label="Date Acquired" InputType="InputType.Date" Required="true" />
-            <MudCheckBox @bind-Value="_form.IsActive" Label="Active" />
+            <MudTextField @bind-Value="_form.DateAcquired" Label="Date Acquired" InputType="InputType.Date" Required="true"/>
+            <MudCheckBox @bind-Value="_form.IsActive" Label="Active"/>
         </MudStack>
     </DialogContent>
     <DialogActions>
@@ -107,27 +109,28 @@
     };
 
     private IEnumerable<TruckSummary> FilteredTrucks => _trucks
-        .Where(t => string.IsNullOrEmpty(_search)
-            || t.PlateNumber.Contains(_search, StringComparison.OrdinalIgnoreCase)
-            || t.TruckModel.Contains(_search, StringComparison.OrdinalIgnoreCase))
-        .Where(t => _ownershipFilter switch
-        {
-            "Company" => t.OwnershipType == OwnershipType.CompanyOwned,
-            "Subcontracted" => t.OwnershipType == OwnershipType.Subcontracted,
-            _ => true
-        })
-        .Where(t => _activeFilter switch
-        {
-            "Active" => t.IsActive,
-            "Inactive" => !t.IsActive,
-            _ => true
-        });
+                                                        .Where(t => string.IsNullOrEmpty(_search)
+                                                            || t.PlateNumber.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                                                            || t.TruckModel.Contains(_search, StringComparison.OrdinalIgnoreCase))
+                                                        .Where(t => _ownershipFilter switch
+                                                        {
+                                                            "Company" => t.OwnershipType == OwnershipType.CompanyOwned,
+                                                            "Subcontracted" => t.OwnershipType == OwnershipType.Subcontracted,
+                                                            _ => true
+                                                        })
+                                                        .Where(t => _activeFilter switch
+                                                        {
+                                                            "Active" => t.IsActive,
+                                                            "Inactive" => !t.IsActive,
+                                                            _ => true
+                                                        });
 
     protected override async Task OnInitializedAsync()
     {
         if (!await PermissionService.HasAsync(Permission.ManageTrucks))
         {
             NavigationManager.NavigateTo(AppRoutes.Dashboard);
+
             return;
         }
 
@@ -148,19 +151,24 @@
         _dialogVisible = true;
     }
 
-    private void CloseDialog() => _dialogVisible = false;
+    private void CloseDialog()
+    {
+        _dialogVisible = false;
+    }
 
     private async Task CreateTruck(bool forceDriverAssignment = false)
     {
         if (string.IsNullOrWhiteSpace(_form.PlateNumber) || string.IsNullOrWhiteSpace(_form.TruckModel))
         {
             Snackbar.Add("Plate number and truck model are required.", Severity.Warning);
+
             return;
         }
 
         if (!DateOnly.TryParse(_form.DateAcquired, out var dateAcquired))
         {
             Snackbar.Add("Date acquired is required.", Severity.Warning);
+
             return;
         }
 
@@ -198,6 +206,7 @@
             }
 
             Snackbar.Add(result.Error ?? "Failed to add truck.", Severity.Error);
+
             return;
         }
 
@@ -215,4 +224,5 @@
         public bool IsActive { get; set; } = true;
         public string DateAcquired { get; set; } = DateTime.Today.ToString("yyyy-MM-dd");
     }
+
 }

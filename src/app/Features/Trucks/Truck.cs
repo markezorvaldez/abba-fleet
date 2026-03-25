@@ -2,16 +2,6 @@ namespace AbbaFleet.Features.Trucks;
 
 public class Truck
 {
-    public Guid Id { get; private set; }
-    public string PlateNumber { get; private set; } = string.Empty;
-    public string TruckModel { get; private set; } = string.Empty;
-    public OwnershipType OwnershipType { get; private set; }
-    public Guid? DriverId { get; private set; }
-    public bool IsActive { get; private set; } = true;
-    public DateOnly DateAcquired { get; private set; }
-    public DateTimeOffset CreatedAt { get; private set; }
-    public DateTimeOffset UpdatedAt { get; private set; }
-
     private Truck() { } // EF Core
 
     public Truck(
@@ -37,6 +27,16 @@ public class Truck
         CreatedAt = DateTimeOffset.UtcNow;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
+
+    public Guid Id { get; private set; }
+    public string PlateNumber { get; private set; } = string.Empty;
+    public string TruckModel { get; private set; } = string.Empty;
+    public OwnershipType OwnershipType { get; private set; }
+    public Guid? DriverId { get; private set; }
+    public bool IsActive { get; private set; } = true;
+    public DateOnly DateAcquired { get; private set; }
+    public DateTimeOffset CreatedAt { get; private set; }
+    public DateTimeOffset UpdatedAt { get; private set; }
 
     public void Update(
         string plateNumber,

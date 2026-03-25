@@ -1,4 +1,3 @@
-@using AbbaFleet.Shared
 @inject IPermissionService PermissionService
 
 <MudNavMenu Class="pa-2" Style="height: 100%;">
@@ -8,7 +7,7 @@
     {
         <MudNavLink Href="@link.Href" Icon="@link.Icon">@link.Label</MudNavLink>
     }
-    <MudDivider />
+    <MudDivider/>
     <MudNavLink Href="/account/logout" Icon="@Icons.Material.Filled.Logout">Log out</MudNavLink>
 </MudNavMenu>
 
@@ -19,11 +18,12 @@
     {
         _navLinks =
         [
-            new("/users", "Users", Icons.Material.Filled.People, await PermissionService.HasAsync(Permission.ManageUsers)),
-            new("/drivers", "Drivers", Icons.Material.Filled.Badge, await PermissionService.HasAsync(Permission.ManageDrivers)),
-            new("/trucks", "Trucks", Icons.Material.Filled.LocalShipping, await PermissionService.HasAsync(Permission.ManageTrucks)),
+            new NavItem("/users", "Users", Icons.Material.Filled.People, await PermissionService.HasAsync(Permission.ManageUsers)),
+            new NavItem("/drivers", "Drivers", Icons.Material.Filled.Badge, await PermissionService.HasAsync(Permission.ManageDrivers)),
+            new NavItem("/trucks", "Trucks", Icons.Material.Filled.LocalShipping, await PermissionService.HasAsync(Permission.ManageTrucks))
         ];
     }
 
     private sealed record NavItem(string Href, string Label, string Icon, bool Visible);
+
 }

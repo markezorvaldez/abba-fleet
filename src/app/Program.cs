@@ -3,6 +3,7 @@ using AbbaFleet.Features.Files;
 using AbbaFleet.Infrastructure;
 using AbbaFleet.Infrastructure.Data;
 using AbbaFleet.Shared;
+using FluentValidation;
 using Lamar.Microsoft.DependencyInjection;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http.Features;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 using Serilog;
+using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,8 +21,8 @@ builder.Host.UseSerilog((context, config) =>
     config.ReadFrom.Configuration(context.Configuration);
 
     config.MinimumLevel.Information()
-          .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
-          .MinimumLevel.Override("Microsoft.Hosting.Lifetime", Serilog.Events.LogEventLevel.Information)
+          .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+          .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
           .Enrich.FromLogContext();
 
     // 3. Standardize the output format
@@ -78,7 +80,7 @@ builder.Host.UseLamar(registry =>
     {
         scan.AssemblyContainingType<Program>();
         scan.WithDefaultConventions(ServiceLifetime.Scoped);
-        scan.ConnectImplementationsToTypesClosing(typeof(FluentValidation.IValidator<>));
+        scan.ConnectImplementationsToTypesClosing(typeof(IValidator<>));
     });
 
     registry.For<IFileStorageService>().Use<R2FileStorageService>();

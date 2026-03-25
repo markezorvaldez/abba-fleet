@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.Extensions.Logging;
 
 namespace AbbaFleet.Shared;
 
@@ -12,11 +11,11 @@ public class NoteService(
     public async Task<IReadOnlyList<NoteDto>> GetNotesAsync(NoteEntityType entityType, Guid entityId)
     {
         var notes = await repository.GetByEntityAsync(entityType, entityId);
+
         return notes.Select(MapToDto).ToList();
     }
 
-    public async Task<Result<NoteDto>> CreateNoteAsync(
-        NoteEntityType entityType, Guid entityId, string title, string body)
+    public async Task<Result<NoteDto>> CreateNoteAsync(NoteEntityType entityType, Guid entityId, string title, string body)
     {
         if (string.IsNullOrWhiteSpace(title))
         {
@@ -40,7 +39,10 @@ public class NoteService(
 
         logger.LogInformation(
             "Note {NoteId} created for {EntityType} {EntityId} by {UserName}",
-            note.Id, entityType, entityId, userName);
+            note.Id,
+            entityType,
+            entityId,
+            userName);
 
         return MapToDto(note);
     }
@@ -76,7 +78,10 @@ public class NoteService(
 
         logger.LogInformation(
             "Note {NoteId} updated for {EntityType} {EntityId} by {UserName}",
-            note.Id, note.EntityType, note.EntityId, userName);
+            note.Id,
+            note.EntityType,
+            note.EntityId,
+            userName);
 
         return MapToDto(note);
     }
@@ -99,24 +104,32 @@ public class NoteService(
 
         logger.LogInformation(
             "Note {NoteId} deleted from {EntityType} {EntityId} by {UserName}",
-            note.Id, note.EntityType, note.EntityId, userName);
+            note.Id,
+            note.EntityType,
+            note.EntityId,
+            userName);
 
         await repository.DeleteAsync(note);
+
         return true;
     }
 
     private async Task<string?> GetCurrentUserNameAsync()
     {
         var state = await authStateProvider.GetAuthenticationStateAsync();
+
         return state.User.FindFirstValue(ClaimTypes.Name);
     }
 
-    private static NoteDto MapToDto(Note n) => new(
-        n.Id,
-        n.Title,
-        n.Body,
-        n.CreatedBy,
-        n.CreatedAt,
-        n.ModifiedBy,
-        n.ModifiedAt);
+    private static NoteDto MapToDto(Note n)
+    {
+        return new NoteDto(
+            n.Id,
+            n.Title,
+            n.Body,
+            n.CreatedBy,
+            n.CreatedAt,
+            n.ModifiedBy,
+            n.ModifiedAt);
+    }
 }

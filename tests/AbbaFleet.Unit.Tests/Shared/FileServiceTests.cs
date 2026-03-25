@@ -14,45 +14,9 @@ public class FileServiceTests
     private readonly IFileStorageService _storageService = Substitute.For<IFileStorageService>();
     private readonly ILogger<FileService> _logger = Substitute.For<ILogger<FileService>>();
 
-    private FileService CreateService() => new(_repository, _storageService, _logger);
-
-    // --- UploadFileAsync ---
-
-    [Fact]
-    public async Task UploadFileAsync_ValidInput_SavesAndReturnsDto()
+    private FileService CreateService()
     {
-        var entityType = NoteEntityType.Driver;
-        var entityId = _fixture.Create<Guid>();
-        var fileName = _fixture.Create<string>();
-        var fileSize = 1024L;
-        var contentType = _fixture.Create<string>();
-        var uploadedBy = _fixture.Create<string>();
-        var storagePath = _fixture.Create<string>();
-        using var stream = new MemoryStream([1, 2, 3]);
-
-        _storageService.SaveAsync(
-                           Arg.Is(stream),
-                           Arg.Is(fileName),
-                           Arg.Is(entityType),
-                           Arg.Is(entityId))
-                       .Returns(storagePath);
-
-        var service = CreateService();
-        var result = await service.UploadFileAsync(null, entityType, entityId, stream, fileName, fileSize, contentType, uploadedBy);
-
-        Assert.True(result.Succeeded);
-        Assert.Equal(fileName, result.Value!.FileName);
-        Assert.Equal(fileSize, result.Value.FileSize);
-        Assert.Equal(uploadedBy, result.Value.UploadedBy);
-
-        await _repository.Received(1)
-                         .AddAsync(
-                             Arg.Is<AttachedFile>(f =>
-                                 f.EntityType == entityType
-                                 && f.EntityId == entityId
-                                 && f.FileName == fileName
-                                 && f.StoragePath == storagePath
-                                 && f.UploadedBy == uploadedBy));
+        return new FileService(_repository, _storageService, _logger);
     }
 
     // --- DeleteFileAsync ---
@@ -158,6 +122,21 @@ public class FileServiceTests
         await _repository.Received(1).DeleteAsync(Arg.Is<AttachedFile>(f => f.Id == file.Id));
     }
 
+    [Fact]
+    public async Task GetFilesForEntityAsync_NoFiles_ReturnsEmptyList()
+    {
+        var entityType = NoteEntityType.Truck;
+        var entityId = _fixture.Create<Guid>();
+
+        _repository.GetByEntityAsync(Arg.Is(entityType), Arg.Is(entityId))
+                   .Returns(new List<AttachedFile>());
+
+        var service = CreateService();
+        var files = await service.GetFilesForEntityAsync(entityType, entityId);
+
+        Assert.Empty(files);
+    }
+
     // --- GetFilesForEntityAsync ---
 
     [Fact]
@@ -201,18 +180,42 @@ public class FileServiceTests
         Assert.Equal(2, files.Count);
     }
 
-    [Fact]
-    public async Task GetFilesForEntityAsync_NoFiles_ReturnsEmptyList()
-    {
-        var entityType = NoteEntityType.Truck;
-        var entityId = _fixture.Create<Guid>();
+    // --- UploadFileAsync ---
 
-        _repository.GetByEntityAsync(Arg.Is(entityType), Arg.Is(entityId))
-                   .Returns(new List<AttachedFile>());
+    [Fact]
+    public async Task UploadFileAsync_ValidInput_SavesAndReturnsDto()
+    {
+        var entityType = NoteEntityType.Driver;
+        var entityId = _fixture.Create<Guid>();
+        var fileName = _fixture.Create<string>();
+        var fileSize = 1024L;
+        var contentType = _fixture.Create<string>();
+        var uploadedBy = _fixture.Create<string>();
+        var storagePath = _fixture.Create<string>();
+        using var stream = new MemoryStream([1, 2, 3]);
+
+        _storageService.SaveAsync(
+                           Arg.Is(stream),
+                           Arg.Is(fileName),
+                           Arg.Is(entityType),
+                           Arg.Is(entityId))
+                       .Returns(storagePath);
 
         var service = CreateService();
-        var files = await service.GetFilesForEntityAsync(entityType, entityId);
+        var result = await service.UploadFileAsync(null, entityType, entityId, stream, fileName, fileSize, contentType, uploadedBy);
 
-        Assert.Empty(files);
+        Assert.True(result.Succeeded);
+        Assert.Equal(fileName, result.Value!.FileName);
+        Assert.Equal(fileSize, result.Value.FileSize);
+        Assert.Equal(uploadedBy, result.Value.UploadedBy);
+
+        await _repository.Received(1)
+                         .AddAsync(
+                             Arg.Is<AttachedFile>(f =>
+                                 f.EntityType == entityType
+                                 && f.EntityId == entityId
+                                 && f.FileName == fileName
+                                 && f.StoragePath == storagePath
+                                 && f.UploadedBy == uploadedBy));
     }
 }

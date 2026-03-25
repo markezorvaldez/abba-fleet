@@ -85,7 +85,10 @@ public class IntegrationTestFixture : IAsyncLifetime
         await _postgres.DisposeAsync();
     }
 
-    public HttpClient CreateClient() => Factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+    public HttpClient CreateClient()
+    {
+        return Factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+    }
 
     public async Task<Dictionary<string, string>> GetLoginFormFieldsAsync(HttpClient client)
     {

@@ -12,15 +12,39 @@ namespace AbbaFleet.Integration.Tests.Users;
 [Collection("Integration")]
 public class UsersPageAccessTests(IntegrationTestFixture fixture)
 {
-    [Fact]
-    public async Task UsersPage_UnauthenticatedRequest_RedirectsToLogin()
+    private async Task LoginAsAsync(HttpClient client, string email, string password)
     {
-        var client = fixture.CreateClient();
+        var formData = await fixture.GetLoginFormFieldsAsync(client);
+        formData["Input.Email"] = email;
+        formData["Input.Password"] = password;
+        await client.PostAsync("/account/login", new FormUrlEncodedContent(formData));
+    }
 
-        var response = await client.GetAsync("/users");
+    private async Task CreateUserWithPermissionsAsync(string email, string password, IEnumerable<Permission> permissions)
+    {
+        using var scope = fixture.Factory.Services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Contains("/account/login", response.Headers.Location?.ToString());
+        if (await userManager.FindByEmailAsync(email) is not null)
+        {
+            return;
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            FullName = "Test User",
+            EmailConfirmed = true,
+            IsActive = true
+        };
+
+        await userManager.CreateAsync(user, password);
+
+        foreach (var p in permissions)
+        {
+            await userManager.AddClaimAsync(user, new Claim(PermissionClaimTypes.Permission, p.ToString()));
+        }
     }
 
     [Fact]
@@ -50,37 +74,14 @@ public class UsersPageAccessTests(IntegrationTestFixture fixture)
         Assert.Equal("/", response.Headers.Location?.AbsolutePath);
     }
 
-    private async Task LoginAsAsync(HttpClient client, string email, string password)
+    [Fact]
+    public async Task UsersPage_UnauthenticatedRequest_RedirectsToLogin()
     {
-        var formData = await fixture.GetLoginFormFieldsAsync(client);
-        formData["Input.Email"] = email;
-        formData["Input.Password"] = password;
-        await client.PostAsync("/account/login", new FormUrlEncodedContent(formData));
-    }
+        var client = fixture.CreateClient();
 
-    private async Task CreateUserWithPermissionsAsync(string email, string password, IEnumerable<Permission> permissions)
-    {
-        using var scope = fixture.Factory.Services.CreateScope();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var response = await client.GetAsync("/users");
 
-        if (await userManager.FindByEmailAsync(email) is not null)
-        {
-            return;
-        }
-
-        var user = new ApplicationUser
-        {
-            UserName = email,
-            Email = email,
-            FullName = "Test User",
-            EmailConfirmed = true,
-            IsActive = true
-        };
-        await userManager.CreateAsync(user, password);
-
-        foreach (var p in permissions)
-        {
-            await userManager.AddClaimAsync(user, new Claim(PermissionClaimTypes.Permission, p.ToString()));
-        }
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Contains("/account/login", response.Headers.Location?.ToString());
     }
 }

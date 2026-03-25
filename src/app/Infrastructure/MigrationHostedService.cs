@@ -30,7 +30,10 @@ public class MigrationHostedService(
         await SeedAdminAsync(scope.ServiceProvider);
     }
 
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
 
     private async Task SeedAdminAsync(IServiceProvider services)
     {

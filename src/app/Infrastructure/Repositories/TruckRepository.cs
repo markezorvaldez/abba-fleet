@@ -1,4 +1,3 @@
-using AbbaFleet.Features.Drivers;
 using AbbaFleet.Features.Trucks;
 using AbbaFleet.Infrastructure.Data;
 using AbbaFleet.Shared;
@@ -11,18 +10,27 @@ public class TruckRepository(IDbContextFactory<AppDbContext> dbFactory) : ITruck
     public async Task<IReadOnlyList<(Truck Truck, string? DriverName)>> GetAllAsync()
     {
         await using var db = await dbFactory.CreateDbContextAsync();
+
         var results = await db.Trucks
-            .Join(
-                db.Drivers,
-                t => t.DriverId,
-                d => d.Id,
-                (t, d) => new { Truck = t, DriverName = (string?)d.FullName })
-            .Union(
-                db.Trucks
-                    .Where(t => t.DriverId == null)
-                    .Select(t => new { Truck = t, DriverName = (string?)null }))
-            .OrderBy(x => x.Truck.PlateNumber)
-            .ToListAsync();
+                              .Join(
+                                  db.Drivers,
+                                  t => t.DriverId,
+                                  d => d.Id,
+                                  (t, d) => new
+                                  {
+                                      Truck = t,
+                                      DriverName = (string?)d.FullName
+                                  })
+                              .Union(
+                                  db.Trucks
+                                    .Where(t => t.DriverId == null)
+                                    .Select(t => new
+                                    {
+                                        Truck = t,
+                                        DriverName = (string?)null
+                                    }))
+                              .OrderBy(x => x.Truck.PlateNumber)
+                              .ToListAsync();
 
         return results.Select(r => (r.Truck, r.DriverName)).ToList();
     }
@@ -38,12 +46,13 @@ public class TruckRepository(IDbContextFactory<AppDbContext> dbFactory) : ITruck
         }
 
         string? driverName = null;
+
         if (truck.DriverId.HasValue)
         {
             driverName = await db.Drivers
-                .Where(d => d.Id == truck.DriverId.Value)
-                .Select(d => d.FullName)
-                .FirstOrDefaultAsync();
+                                 .Where(d => d.Id == truck.DriverId.Value)
+                                 .Select(d => d.FullName)
+                                 .FirstOrDefaultAsync();
         }
 
         return (truck, driverName);
@@ -86,19 +95,21 @@ public class TruckRepository(IDbContextFactory<AppDbContext> dbFactory) : ITruck
     public async Task<IReadOnlyList<LookupItem>> GetActiveDriverOptionsAsync()
     {
         await using var db = await dbFactory.CreateDbContextAsync();
+
         return await db.Drivers
-            .Where(d => d.IsActive)
-            .OrderBy(d => d.FullName)
-            .Select(d => new LookupItem(d.Id, d.FullName))
-            .ToListAsync();
+                       .Where(d => d.IsActive)
+                       .OrderBy(d => d.FullName)
+                       .Select(d => new LookupItem(d.Id, d.FullName))
+                       .ToListAsync();
     }
 
     public async Task<(Truck Truck, string? DriverName)?> GetByDriverIdAsync(Guid driverId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
+
         var truck = await db.Trucks
-            .Where(t => t.DriverId == driverId)
-            .FirstOrDefaultAsync();
+                            .Where(t => t.DriverId == driverId)
+                            .FirstOrDefaultAsync();
 
         if (truck is null)
         {
@@ -106,9 +117,9 @@ public class TruckRepository(IDbContextFactory<AppDbContext> dbFactory) : ITruck
         }
 
         var driverName = await db.Drivers
-            .Where(d => d.Id == driverId)
-            .Select(d => d.FullName)
-            .FirstOrDefaultAsync();
+                                 .Where(d => d.Id == driverId)
+                                 .Select(d => d.FullName)
+                                 .FirstOrDefaultAsync();
 
         return (truck, driverName);
     }
@@ -116,9 +127,10 @@ public class TruckRepository(IDbContextFactory<AppDbContext> dbFactory) : ITruck
     public async Task<DriverLookup?> GetDriverLookupAsync(Guid driverId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
+
         return await db.Drivers
-            .Where(d => d.Id == driverId)
-            .Select(d => new DriverLookup(d.Id, d.FullName, d.IsActive))
-            .FirstOrDefaultAsync();
+                       .Where(d => d.Id == driverId)
+                       .Select(d => new DriverLookup(d.Id, d.FullName, d.IsActive))
+                       .FirstOrDefaultAsync();
     }
 }

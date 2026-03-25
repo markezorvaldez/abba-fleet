@@ -4,7 +4,7 @@
             <ChildContent>
                 <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
                     <NotAuthorized>
-                        <RedirectToLogin />
+                        <RedirectToLogin/>
                     </NotAuthorized>
                 </AuthorizeRouteView>
             </ChildContent>
@@ -14,6 +14,6 @@
                 </MudAlert>
             </ErrorContent>
         </ErrorBoundary>
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1"/>
     </Found>
 </Router>

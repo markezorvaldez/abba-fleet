@@ -12,15 +12,18 @@ public class UserService(UserManager<ApplicationUser> userManager) : IUserServic
     {
         var users = await userManager.Users.OrderBy(u => u.FullName).ToListAsync<ApplicationUser>();
         var summaries = new List<UserSummary>(users.Count);
+
         foreach (var u in users)
         {
             var claims = await userManager.GetClaimsAsync(u);
+
             var permissions = claims
-                .Where(c => c.Type == PermissionClaimTypes.Permission)
-                .Select(c => Enum.TryParse<Permission>(c.Value, out var p) ? (Permission?)p : null)
-                .Where(p => p.HasValue)
-                .Select(p => p!.Value)
-                .ToHashSet();
+                              .Where(c => c.Type == PermissionClaimTypes.Permission)
+                              .Select(c => Enum.TryParse<Permission>(c.Value, out var p) ? (Permission?)p : null)
+                              .Where(p => p.HasValue)
+                              .Select(p => p!.Value)
+                              .ToHashSet();
+
             summaries.Add(new UserSummary(u.Id, u.FullName, u.Email ?? string.Empty, u.IsActive, u.LastLoginAt, permissions));
         }
 
@@ -39,6 +42,7 @@ public class UserService(UserManager<ApplicationUser> userManager) : IUserServic
         };
 
         var result = await userManager.CreateAsync(user, password);
+
         if (!result.Succeeded)
         {
             return new UserResult(false, string.Join(", ", result.Errors.Select(e => e.Description)));
@@ -52,9 +56,16 @@ public class UserService(UserManager<ApplicationUser> userManager) : IUserServic
         return new UserResult(true);
     }
 
-    public async Task<UserResult> UpdateAsync(string userId, string fullName, bool isActive, string? newPassword, IReadOnlySet<Permission> targetPermissions, string currentUserId)
+    public async Task<UserResult> UpdateAsync(
+        string userId,
+        string fullName,
+        bool isActive,
+        string? newPassword,
+        IReadOnlySet<Permission> targetPermissions,
+        string currentUserId)
     {
         var user = await userManager.FindByIdAsync(userId);
+
         if (user is null)
         {
             return new UserResult(false, "User not found.");
@@ -65,16 +76,19 @@ public class UserService(UserManager<ApplicationUser> userManager) : IUserServic
 
         // Self-protection: cannot remove own ManageUsers permission
         var effective = targetPermissions.ToHashSet();
+
         if (userId == currentUserId)
         {
             effective.Add(Permission.ManageUsers);
         }
 
         var existingClaims = await userManager.GetClaimsAsync(user);
+
         var existing = existingClaims
-            .Where(c => c.Type == PermissionClaimTypes.Permission)
-            .Select(c => c.Value)
-            .ToHashSet();
+                       .Where(c => c.Type == PermissionClaimTypes.Permission)
+                       .Select(c => c.Value)
+                       .ToHashSet();
+
         var target = effective.Select(p => p.ToString()).ToHashSet();
 
         foreach (var name in target.Except(existing))
@@ -91,6 +105,7 @@ public class UserService(UserManager<ApplicationUser> userManager) : IUserServic
         {
             var token = await userManager.GeneratePasswordResetTokenAsync(user);
             var resetResult = await userManager.ResetPasswordAsync(user, token, newPassword);
+
             if (!resetResult.Succeeded)
             {
                 return new UserResult(false, string.Join(", ", resetResult.Errors.Select(e => e.Description)));
@@ -98,6 +113,7 @@ public class UserService(UserManager<ApplicationUser> userManager) : IUserServic
         }
 
         var updateResult = await userManager.UpdateAsync(user);
+
         return updateResult.Succeeded
             ? new UserResult(true)
             : new UserResult(false, string.Join(", ", updateResult.Errors.Select(e => e.Description)));
@@ -106,12 +122,14 @@ public class UserService(UserManager<ApplicationUser> userManager) : IUserServic
     public async Task<UserResult> DeleteAsync(string userId)
     {
         var user = await userManager.FindByIdAsync(userId);
+
         if (user is null)
         {
             return new UserResult(false, "User not found.");
         }
 
         var result = await userManager.DeleteAsync(user);
+
         return result.Succeeded
             ? new UserResult(true)
             : new UserResult(false, string.Join(", ", result.Errors.Select(e => e.Description)));
@@ -120,6 +138,7 @@ public class UserService(UserManager<ApplicationUser> userManager) : IUserServic
     public async Task<UserResult> ToggleActiveAsync(string userId, bool makeActive)
     {
         var user = await userManager.FindByIdAsync(userId);
+
         if (user is null)
         {
             return new UserResult(false, "User not found.");
@@ -128,8 +147,7 @@ public class UserService(UserManager<ApplicationUser> userManager) : IUserServic
         if (!makeActive)
         {
             // Block if this is the last active admin
-            var adminUsers = await userManager.GetUsersForClaimAsync(
-                new Claim(PermissionClaimTypes.Permission, Permission.ManageUsers.ToString()));
+            var adminUsers = await userManager.GetUsersForClaimAsync(new Claim(PermissionClaimTypes.Permission, Permission.ManageUsers.ToString()));
             var activeAdminCount = adminUsers.Count(u => u.IsActive);
             var isAdmin = adminUsers.Any(u => u.Id == userId && u.IsActive);
 
@@ -141,6 +159,7 @@ public class UserService(UserManager<ApplicationUser> userManager) : IUserServic
 
         user.IsActive = makeActive;
         var result = await userManager.UpdateAsync(user);
+
         return result.Succeeded
             ? new UserResult(true)
             : new UserResult(false, string.Join(", ", result.Errors.Select(e => e.Description)));

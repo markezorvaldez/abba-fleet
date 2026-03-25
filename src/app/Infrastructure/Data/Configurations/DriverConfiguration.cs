@@ -11,21 +11,21 @@ public class DriverConfiguration : IEntityTypeConfiguration<Driver>
         builder.HasKey(d => d.Id);
 
         builder.Property(d => d.FullName)
-            .IsRequired()
-            .HasMaxLength(100);
+               .IsRequired()
+               .HasMaxLength(100);
 
         builder.Property(d => d.PhoneNumber)
-            .IsRequired()
-            .HasMaxLength(100);
+               .IsRequired()
+               .HasMaxLength(100);
 
         builder.Property(d => d.FacebookLink)
-            .HasMaxLength(100);
+               .HasMaxLength(100);
 
         builder.Property(d => d.Address)
-            .HasMaxLength(100);
+               .HasMaxLength(100);
 
         builder.Property(d => d.DateStarted)
-            .IsRequired();
+               .IsRequired();
 
         builder.HasIndex(d => d.IsActive);
     }
