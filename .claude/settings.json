@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jb cleanupcode --profile=\"C# Cleanup\" abba-fleet.sln --include=\"${file}\" 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

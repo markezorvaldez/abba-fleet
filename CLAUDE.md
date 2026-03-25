@@ -66,10 +66,6 @@ Run the full suite with `dotnet test`.
 - **Tight mock arrange on positive tests:** Use `Arg.Is<T>(predicate)` matching expected values, not `Arg.Any<T>()`. Loose matchers are fine for negative/failure-path tests.
 - **Use AutoFixture for test data:** Use `IFixture` / `_fixture.Create<T>()` for arbitrary test values rather than hardcoding magic strings and numbers.
 
-### EditorConfig compliance
-
-After writing or editing any C# file, run `dotnet format abba-fleet.sln --verify-no-changes` and fix violations before committing.
-
 ### Proactive tech debt
 
 When implementing a feature, always include a brief "Known shortcuts / tech debt" note in the plan if any validation, security, or concurrency gaps are knowingly deferred. Don't wait to be asked — surface these during planning.
