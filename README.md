@@ -36,6 +36,17 @@ docker compose up
 
 App: http://localhost:5000
 
+## Code style
+
+Code style is enforced by ReSharper CleanupCode. The tool is installed as a local .NET tool:
+
+```bash
+dotnet tool restore
+dotnet jb cleanupcode abba-fleet.sln --profile="C# Cleanup"
+```
+
+If a PR fails the **Code Style** check, run the command above to automatically fix violations, then commit and push.
+
 ## Architecture decisions
 
 See [docs/adr/](docs/adr/) for records of key architectural decisions and their reasoning.

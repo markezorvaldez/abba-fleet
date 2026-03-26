@@ -1,0 +1,47 @@
+name: Code Style
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  cleanupcode:
+    name: ReSharper CleanupCode
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      - name: Get changed C# files
+        id: changed
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
+            | grep '\.cs$' \
+            | tr '\n' ';')
+          echo "files=$CHANGED" >> $GITHUB_OUTPUT
+
+      - name: Run CleanupCode
+        if: steps.changed.outputs.files != ''
+        run: |
+          dotnet jb cleanupcode abba-fleet.sln \
+            --include="${{ steps.changed.outputs.files }}" \
+            --profile="C# Cleanup" \
+            --settings=abba-fleet.sln.DotSettings \
+            --verbosity=ERROR
+
+      - name: Fail on diff
+        if: steps.changed.outputs.files != ''
+        run: |
+          if ! git diff --quiet; then
+            echo "::error::CleanupCode found style violations:"
+            git diff --name-only | while read f; do echo "::error file=$f::Style violation"; done
+            exit 1
+          fi
