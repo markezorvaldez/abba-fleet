@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jb cleanupcode --profile=\"C# Cleanup\" abba-fleet.sln --include=\"${file}\" 2>/dev/null || true"
+            "command": "bash .claude/hooks/cleanup-code.sh \"${file}\""
           }
         ]
       }
