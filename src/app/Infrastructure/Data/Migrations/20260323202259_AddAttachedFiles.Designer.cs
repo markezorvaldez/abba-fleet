@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AbbaFleet.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260322190432_AddAttachedFiles")]
+    [Migration("20260323202259_AddAttachedFiles")]
     partial class AddAttachedFiles
     {
         /// <inheritdoc />
