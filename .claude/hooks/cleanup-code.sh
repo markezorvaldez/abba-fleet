@@ -15,4 +15,4 @@ rel=$(echo "$fp" | sed 's|\\\\|/|g; s|.*/abba-fleet/||')
 
 [ -z "$rel" ] && exit 0
 
-dotnet jb cleanupcode --profile="C# Cleanup" abba-fleet.sln --include="$rel" > /dev/null 2>&1
+dotnet jb cleanupcode --profile="C# Cleanup" --settings=abba-fleet.sln.DotSettings abba-fleet.sln --include="$rel" > /dev/null 2>&1
