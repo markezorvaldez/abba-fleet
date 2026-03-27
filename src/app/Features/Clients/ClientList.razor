@@ -1,9 +1,9 @@
 @page "/clients"
 @attribute [Authorize]
 @rendermode InteractiveServer
-@using AbbaFleet.Features.Clients
-@using AbbaFleet.Shared
 @inject IClientService ClientService
+@inject IPermissionService PermissionService
+@inject IDialogService DialogService
 @inject NavigationManager NavigationManager
 
 <MudDialogProvider/>
@@ -13,7 +13,17 @@
 <PageTitle>Clients — ABBA Fleet</PageTitle>
 
 <MudStack Spacing="3">
-    <MudText Typo="Typo.h5">Clients</MudText>
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h5">Clients</MudText>
+        <MudSpacer/>
+        @if (_canManage)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddDialog">
+                Add Client
+            </MudButton>
+        }
+    </MudStack>
 
     @if (_clients is null)
     {
@@ -21,9 +31,14 @@
     }
     else
     {
-        <MudDataGrid Items="_clients" Hover="true" Filterable="true" QuickFilter="QuickFilter"
+        <MudDataGrid Items="_clients" Hover="true" QuickFilter="QuickFilter"
                      RowClick="OnRowClick" T="ClientSummary">
             <ToolBarContent>
+                <MudToggleGroup T="string" @bind-Value="_statusFilter">
+                    <MudToggleItem Value="@("All")" Text="All"/>
+                    <MudToggleItem Value="@("Active")" Text="Active"/>
+                    <MudToggleItem Value="@("Inactive")" Text="Inactive"/>
+                </MudToggleGroup>
                 <MudSpacer/>
                 <MudTextField @bind-Value="_search" Placeholder="Search" Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"/>
@@ -45,6 +60,9 @@
                     </CellTemplate>
                 </TemplateColumn>
             </Columns>
+            <PagerContent>
+                <MudDataGridPager T="ClientSummary"/>
+            </PagerContent>
         </MudDataGrid>
     }
 </MudStack>
@@ -52,10 +70,13 @@
 @code {
     private IReadOnlyList<ClientSummary>? _clients;
     private string _search = string.Empty;
+    private string _statusFilter = "All";
+    private bool _canManage;
 
     protected override async Task OnInitializedAsync()
     {
         _clients = await ClientService.GetAllAsync();
+        _canManage = await PermissionService.HasAsync(Permission.ManageCompanies);
     }
 
     private void OnRowClick(DataGridRowClickEventArgs<ClientSummary> args)
@@ -63,8 +84,29 @@
         NavigationManager.NavigateTo(AppRoutes.ClientDetailFor(args.Item.Id));
     }
 
+    private async Task OpenAddDialog()
+    {
+        var dialog = await DialogService.ShowAsync<AddClientDialog>("Add Client");
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: Guid newId })
+        {
+            NavigationManager.NavigateTo(AppRoutes.ClientDetailFor(newId));
+        }
+    }
+
     private Func<ClientSummary, bool> QuickFilter => c =>
-        string.IsNullOrWhiteSpace(_search) ||
-        c.CompanyName.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
-        (c.Address?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
+    {
+        var matchesSearch = string.IsNullOrWhiteSpace(_search) || c.CompanyName.Contains(_search, StringComparison.OrdinalIgnoreCase) || (c.Address?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
+
+        var matchesStatus = _statusFilter switch
+        {
+            "Active" => c.IsActive,
+            "Inactive" => !c.IsActive,
+            _ => true
+        };
+
+        return matchesSearch && matchesStatus;
+    };
+
 }

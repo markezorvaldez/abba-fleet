@@ -3,6 +3,7 @@ using System;
 using AbbaFleet.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,95 +12,18 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AbbaFleet.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260322190432_AddAttachedFiles")]
+    partial class AddAttachedFiles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "10.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "citext");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("AbbaFleet.Features.Clients.Client", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("CompanyName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("citext");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<decimal>("TaxRate")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("numeric(5,2)");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CompanyName")
-                        .IsUnique();
-
-                    b.HasIndex("IsActive");
-
-                    b.ToTable("Clients");
-                });
-
-            modelBuilder.Entity("AbbaFleet.Features.Clients.Contact", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ClientId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("Role")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ClientId");
-
-                    b.ToTable("Contacts");
-                });
 
             modelBuilder.Entity("AbbaFleet.Features.Drivers.Driver", b =>
                 {
@@ -147,53 +71,10 @@ namespace AbbaFleet.Infrastructure.Data.Migrations
                     b.ToTable("Drivers");
                 });
 
-            modelBuilder.Entity("AbbaFleet.Features.Trucks.InvestmentEntry", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateOnly>("Date")
-                        .HasColumnType("date");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<Guid>("TruckId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TruckId");
-
-                    b.ToTable("InvestmentEntries");
-                });
-
             modelBuilder.Entity("AbbaFleet.Features.Trucks.Truck", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("ClientId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -227,8 +108,6 @@ namespace AbbaFleet.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ClientId");
 
                     b.HasIndex("DriverId");
 
@@ -563,22 +442,8 @@ namespace AbbaFleet.Infrastructure.Data.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("AbbaFleet.Features.Clients.Contact", b =>
-                {
-                    b.HasOne("AbbaFleet.Features.Clients.Client", null)
-                        .WithMany()
-                        .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("AbbaFleet.Features.Trucks.Truck", b =>
                 {
-                    b.HasOne("AbbaFleet.Features.Clients.Client", null)
-                        .WithMany()
-                        .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("AbbaFleet.Features.Drivers.Driver", null)
                         .WithMany()
                         .HasForeignKey("DriverId")

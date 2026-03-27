@@ -33,28 +33,40 @@ public class ClientRepository(IDbContextFactory<AppDbContext> factory) : IClient
     {
         await using var db = await factory.CreateDbContextAsync();
 
-        return await db.Trucks
-                       .Where(t => t.ClientId == clientId)
-                       .GroupJoin(
-                           db.Set<Driver>(),
-                           t => t.DriverId,
-                           d => d.Id,
-                           (t, drivers) => new
-                           {
-                               Truck = t,
-                               Drivers = drivers
-                           })
-                       .SelectMany(
-                           x => x.Drivers.DefaultIfEmpty(),
-                           (x, d) => new ClientAssignedTruckDto(
-                               x.Truck.Id,
-                               x.Truck.PlateNumber,
-                               x.Truck.TruckModel,
-                               x.Truck.OwnershipType.ToString(),
-                               d != null ? d.FullName : null,
-                               x.Truck.IsActive))
-                       .OrderBy(t => t.PlateNumber)
-                       .ToListAsync();
+        var rows = await db.Trucks
+                           .Where(t => t.ClientId == clientId)
+                           .GroupJoin(
+                               db.Set<Driver>(),
+                               t => t.DriverId,
+                               d => d.Id,
+                               (t, drivers) => new
+                               {
+                                   Truck = t,
+                                   Drivers = drivers
+                               })
+                           .SelectMany(
+                               x => x.Drivers.DefaultIfEmpty(),
+                               (x, d) => new
+                               {
+                                   x.Truck.Id,
+                                   x.Truck.PlateNumber,
+                                   x.Truck.TruckModel,
+                                   x.Truck.OwnershipType,
+                                   DriverName = d != null ? d.FullName : null,
+                                   x.Truck.IsActive
+                               })
+                           .OrderBy(x => x.PlateNumber)
+                           .ToListAsync();
+
+        return rows
+               .Select(x => new ClientAssignedTruckDto(
+                   x.Id,
+                   x.PlateNumber,
+                   x.TruckModel,
+                   x.OwnershipType.ToString(),
+                   x.DriverName,
+                   x.IsActive))
+               .ToList();
     }
 
     public async Task AddAsync(Client client)
