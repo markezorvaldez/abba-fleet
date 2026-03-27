@@ -3,6 +3,7 @@ using AbbaFleet.Infrastructure.Data;
 using AbbaFleet.Shared;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace AbbaFleet.Infrastructure;
 
@@ -19,6 +20,11 @@ public class MigrationHostedService(
         try
         {
             await db.Database.MigrateAsync(cancellationToken);
+
+            // Reload Npgsql type map — the citext extension may have just been created by migration
+            var conn = (NpgsqlConnection)db.Database.GetDbConnection();
+            await conn.OpenAsync(cancellationToken);
+            await conn.ReloadTypesAsync(cancellationToken);
         }
         catch (Exception ex)
         {
