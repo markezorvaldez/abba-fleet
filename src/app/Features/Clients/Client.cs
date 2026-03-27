@@ -24,7 +24,6 @@ public class Client
     }
 
     public Guid Id { get; private set; }
-
     public string CompanyName { get; private set; } = string.Empty;
     public string? Description { get; private set; }
     public string? Address { get; private set; }
