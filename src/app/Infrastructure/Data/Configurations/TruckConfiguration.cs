@@ -1,3 +1,4 @@
+using AbbaFleet.Features.Clients;
 using AbbaFleet.Features.Drivers;
 using AbbaFleet.Features.Trucks;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,11 @@ public class TruckConfiguration : IEntityTypeConfiguration<Truck>
         builder.HasOne<Driver>()
                .WithMany()
                .HasForeignKey(t => t.DriverId)
+               .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne<Client>()
+               .WithMany()
+               .HasForeignKey(t => t.ClientId)
                .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(t => t.PlateNumber).IsUnique();

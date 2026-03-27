@@ -33,6 +33,7 @@ public class Truck
     public string TruckModel { get; private set; } = string.Empty;
     public OwnershipType OwnershipType { get; private set; }
     public Guid? DriverId { get; private set; }
+    public Guid? ClientId { get; private set; }
     public bool IsActive { get; private set; } = true;
     public DateOnly DateAcquired { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
@@ -58,6 +59,12 @@ public class Truck
         DriverId = driverId;
         IsActive = isActive;
         DateAcquired = dateAcquired;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void SetClient(Guid? clientId)
+    {
+        ClientId = clientId;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 }

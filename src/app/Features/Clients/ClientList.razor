@@ -1,9 +1,70 @@
 @page "/clients"
 @attribute [Authorize]
 @rendermode InteractiveServer
+@using AbbaFleet.Features.Clients
+@using AbbaFleet.Shared
+@inject IClientService ClientService
+@inject NavigationManager NavigationManager
 
 <MudDialogProvider/>
 <MudSnackbarProvider/>
 <MudPopoverProvider/>
 
 <PageTitle>Clients — ABBA Fleet</PageTitle>
+
+<MudStack Spacing="3">
+    <MudText Typo="Typo.h5">Clients</MudText>
+
+    @if (_clients is null)
+    {
+        <MudProgressLinear Indeterminate="true"/>
+    }
+    else
+    {
+        <MudDataGrid Items="_clients" Hover="true" Filterable="true" QuickFilter="QuickFilter"
+                     RowClick="OnRowClick" T="ClientSummary">
+            <ToolBarContent>
+                <MudSpacer/>
+                <MudTextField @bind-Value="_search" Placeholder="Search" Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"/>
+            </ToolBarContent>
+            <Columns>
+                <PropertyColumn Property="c => c.CompanyName" Title="Company Name"/>
+                <PropertyColumn Property="c => c.Address" Title="Address"/>
+                <TemplateColumn Title="Tax Rate">
+                    <CellTemplate>
+                        @context.Item.TaxRate.ToString("0.##")%
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Status">
+                    <CellTemplate>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(context.Item.IsActive ? Color.Success : Color.Default)">
+                            @(context.Item.IsActive ? "Active" : "Inactive")
+                        </MudChip>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    }
+</MudStack>
+
+@code {
+    private IReadOnlyList<ClientSummary>? _clients;
+    private string _search = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _clients = await ClientService.GetAllAsync();
+    }
+
+    private void OnRowClick(DataGridRowClickEventArgs<ClientSummary> args)
+    {
+        NavigationManager.NavigateTo(AppRoutes.ClientDetailFor(args.Item.Id));
+    }
+
+    private Func<ClientSummary, bool> QuickFilter => c =>
+        string.IsNullOrWhiteSpace(_search) ||
+        c.CompanyName.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+        (c.Address?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
+}

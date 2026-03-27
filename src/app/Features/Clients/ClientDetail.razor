@@ -1,0 +1,277 @@
+@* src/app/Features/Clients/ClientDetail.razor *@
+@page "/clients/{Id:guid}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using AbbaFleet.Features.Clients
+@using AbbaFleet.Shared
+@using AbbaFleet.Components.Shared
+@inject IClientService ClientService
+@inject IPermissionService PermissionService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ILogger<ClientDetail> Logger
+
+<MudDialogProvider/>
+<MudSnackbarProvider/>
+<MudPopoverProvider/>
+
+<PageTitle>@(_client?.CompanyName ?? "Client") — ABBA Fleet</PageTitle>
+
+@if (_client is null)
+{
+    <MudText Typo="Typo.h6" Class="pa-4">Client not found.</MudText>
+}
+else
+{
+    <MudStack Spacing="4">
+
+        @* Header *@
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+            <MudStack>
+                <MudText Typo="Typo.h5">@_client.CompanyName</MudText>
+                <MudChip T="string" Color="@(_client.IsActive ? Color.Success : Color.Default)" Size="Size.Small">
+                    @(_client.IsActive ? "Active" : "Inactive")
+                </MudChip>
+            </MudStack>
+
+            @if (!_editMode && _canManage)
+            {
+                <MudStack Row="true">
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit"
+                               OnClick="EnterEditMode">Edit</MudButton>
+                </MudStack>
+            }
+        </MudStack>
+
+        @* View / Edit Card *@
+        <MudCard>
+            <MudCardContent>
+                @if (_editMode)
+                {
+                    <MudGrid>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_form.CompanyName" Label="Company Name" Required="true"/>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_form.TaxRate" Label="Tax Rate (%)" InputType="InputType.Number"/>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_form.Description" Label="Description" Lines="3"/>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_form.Address" Label="Address"/>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudCheckBox @bind-Value="_form.IsActive" Label="Active"/>
+                        </MudItem>
+                    </MudGrid>
+                }
+                else
+                {
+                    <MudGrid>
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.caption">Company Name</MudText>
+                            <MudText>@_client.CompanyName</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.caption">Tax Rate</MudText>
+                            <MudText>@_client.TaxRate.ToString("0.##")%</MudText>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.caption">Description</MudText>
+                            <MudText>@(_client.Description ?? "—")</MudText>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.caption">Address</MudText>
+                            <MudText>@(_client.Address ?? "—")</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.caption">Created</MudText>
+                            <MudText>@_client.CreatedAt.LocalDateTime.ToString("dd MMM yyyy HH:mm")</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.caption">Last Updated</MudText>
+                            <MudText>@_client.UpdatedAt.LocalDateTime.ToString("dd MMM yyyy HH:mm")</MudText>
+                        </MudItem>
+                    </MudGrid>
+                }
+            </MudCardContent>
+
+            @if (_editMode)
+            {
+                <MudCardActions>
+                    <MudButton OnClick="CancelEdit">Cancel</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               Disabled="string.IsNullOrWhiteSpace(_form.CompanyName)"
+                               OnClick="SaveEdit">
+                        Save
+                    </MudButton>
+                </MudCardActions>
+            }
+        </MudCard>
+
+        @* Assigned Trucks *@
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.subtitle1">Assigned Trucks (@_client.AssignedTrucks.Count)</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (_client.AssignedTrucks.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No trucks assigned to this client.</MudText>
+                }
+                else
+                {
+                    <MudTable Items="_client.AssignedTrucks" Hover="true" Dense="true" Elevation="0">
+                        <HeaderContent>
+                            <MudTh>Plate</MudTh>
+                            <MudTh>Model</MudTh>
+                            <MudTh>Ownership</MudTh>
+                            <MudTh>Driver</MudTh>
+                            <MudTh>Status</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.PlateNumber</MudTd>
+                            <MudTd>@context.TruckModel</MudTd>
+                            <MudTd>@context.OwnershipType</MudTd>
+                            <MudTd>@(context.DriverName ?? "—")</MudTd>
+                            <MudTd>
+                                <MudChip T="string" Size="Size.Small"
+                                         Color="@(context.IsActive ? Color.Success : Color.Default)">
+                                    @(context.IsActive ? "Active" : "Inactive")
+                                </MudChip>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </MudCardContent>
+        </MudCard>
+
+        @* Tabs *@
+        <MudTabs Elevation="1" Rounded="true" Class="mt-4">
+            <MudTabPanel Text="Contacts">
+                <ContactPanel ClientId="Id"/>
+            </MudTabPanel>
+            <MudTabPanel Text="Notes">
+                <NotePanel EntityType="NoteEntityType.Client" EntityId="Id"/>
+            </MudTabPanel>
+            <MudTabPanel Text="Files">
+                <FilePanel EntityType="NoteEntityType.Client" EntityId="Id"/>
+            </MudTabPanel>
+        </MudTabs>
+
+    </MudStack>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private ClientDetailDto? _client;
+    private bool _editMode;
+    private bool _canManage;
+
+    private ClientFormModel _form = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _canManage = await PermissionService.HasAsync(Permission.ManageCompanies);
+        await LoadClient();
+    }
+
+    private async Task LoadClient()
+    {
+        _client = await ClientService.GetByIdAsync(Id);
+    }
+
+    private void EnterEditMode()
+    {
+        if (_client is null)
+        {
+            return;
+        }
+
+        _form = new ClientFormModel
+        {
+            CompanyName = _client.CompanyName,
+            Description = _client.Description,
+            Address = _client.Address,
+            TaxRate = _client.TaxRate,
+            IsActive = _client.IsActive
+        };
+        _editMode = true;
+    }
+
+    private void CancelEdit()
+    {
+        _editMode = false;
+    }
+
+    private async Task SaveEdit()
+    {
+        if (string.IsNullOrWhiteSpace(_form.CompanyName))
+        {
+            return;
+        }
+
+        var taxRateChanged = _client is not null && _form.TaxRate != _client.TaxRate;
+        string? warningText = null;
+
+        if (taxRateChanged)
+        {
+            var hasUnlocked = await ClientService.HasUnlockedReconciliationsAsync(Id);
+            if (hasUnlocked)
+            {
+                warningText = "Changing the tax rate will not affect existing locked cashouts, " +
+                              "but there are unlocked reconciliations that may be impacted.";
+            }
+        }
+
+        var parameters = new DialogParameters<ReasonDialog>
+        {
+            { x => x.Title, "Reason for edit" },
+            { x => x.ConfirmColor, Color.Primary },
+            { x => x.WarningText, warningText }
+        };
+
+        var dialog = await DialogService.ShowAsync<ReasonDialog>("Edit Reason", parameters);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult is null || dialogResult.Canceled)
+        {
+            return;
+        }
+
+        var reason = dialogResult.Data as string;
+        var request = new UpsertClientRequest(
+            _form.CompanyName,
+            _form.Description,
+            _form.Address,
+            _form.TaxRate,
+            _form.IsActive);
+
+        var result = await ClientService.UpdateAsync(Id, request);
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Failed to update client.", Severity.Error);
+            return;
+        }
+
+        Logger.LogInformation("Client {ClientId} edited. Reason: {Reason}", Id, reason);
+        _editMode = false;
+        await LoadClient();
+        Snackbar.Add("Client updated successfully.", Severity.Success);
+    }
+
+    private sealed class ClientFormModel
+    {
+        public string CompanyName { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? Address { get; set; }
+        public decimal TaxRate { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+}
