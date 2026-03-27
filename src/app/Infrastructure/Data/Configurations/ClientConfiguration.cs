@@ -10,7 +10,7 @@ public class ClientConfiguration : IEntityTypeConfiguration<Client>
     {
         builder.HasKey(c => c.Id);
 
-        builder.Property(c => c.CompanyName).IsRequired().HasMaxLength(100);
+        builder.Property(c => c.CompanyName).IsRequired().HasMaxLength(100).HasColumnType("citext");
         builder.Property(c => c.Description).HasMaxLength(500);
         builder.Property(c => c.Address).HasMaxLength(200);
         builder.Property(c => c.TaxRate).HasPrecision(5, 2);

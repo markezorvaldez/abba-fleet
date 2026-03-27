@@ -20,7 +20,8 @@
         [
             new NavItem("/users", "Users", Icons.Material.Filled.People, await PermissionService.HasAsync(Permission.ManageUsers)),
             new NavItem("/drivers", "Drivers", Icons.Material.Filled.Badge, await PermissionService.HasAsync(Permission.ManageDrivers)),
-            new NavItem("/trucks", "Trucks", Icons.Material.Filled.LocalShipping, await PermissionService.HasAsync(Permission.ManageTrucks))
+            new NavItem("/trucks", "Trucks", Icons.Material.Filled.LocalShipping, await PermissionService.HasAsync(Permission.ManageTrucks)),
+            new NavItem("/clients", "Clients", Icons.Material.Filled.Business, await PermissionService.HasAsync(Permission.ManageCompanies))
         ];
     }
 

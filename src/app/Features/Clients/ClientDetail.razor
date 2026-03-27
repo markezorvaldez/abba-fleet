@@ -2,9 +2,6 @@
 @page "/clients/{Id:guid}"
 @attribute [Authorize]
 @rendermode InteractiveServer
-@using AbbaFleet.Features.Clients
-@using AbbaFleet.Shared
-@using AbbaFleet.Components.Shared
 @inject IClientService ClientService
 @inject IPermissionService PermissionService
 @inject NavigationManager NavigationManager
@@ -20,7 +17,13 @@
 
 @if (_client is null)
 {
-    <MudText Typo="Typo.h6" Class="pa-4">Client not found.</MudText>
+    <MudStack Class="pa-4" Spacing="2">
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@(() => NavigationManager.NavigateTo(AppRoutes.Clients))">
+            Back to Clients
+        </MudButton>
+        <MudText Typo="Typo.h6">Client not found.</MudText>
+    </MudStack>
 }
 else
 {
@@ -28,18 +31,24 @@ else
 
         @* Header *@
         <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-            <MudStack>
-                <MudText Typo="Typo.h5">@_client.CompanyName</MudText>
-                <MudChip T="string" Color="@(_client.IsActive ? Color.Success : Color.Default)" Size="Size.Small">
-                    @(_client.IsActive ? "Active" : "Inactive")
-                </MudChip>
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                               OnClick="@(() => NavigationManager.NavigateTo(AppRoutes.Clients))"/>
+                <MudStack>
+                    <MudText Typo="Typo.h5">@_client.CompanyName</MudText>
+                    <MudChip T="string" Color="@(_client.IsActive ? Color.Success : Color.Default)" Size="Size.Small">
+                        @(_client.IsActive ? "Active" : "Inactive")
+                    </MudChip>
+                </MudStack>
             </MudStack>
 
             @if (!_editMode && _canManage)
             {
                 <MudStack Row="true">
                     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit"
-                               OnClick="EnterEditMode">Edit</MudButton>
+                               OnClick="EnterEditMode">
+                        Edit
+                    </MudButton>
                 </MudStack>
             }
         </MudStack>
@@ -167,7 +176,9 @@ else
 }
 
 @code {
-    [Parameter] public Guid Id { get; set; }
+
+    [Parameter]
+    public Guid Id { get; set; }
 
     private ClientDetailDto? _client;
     private bool _editMode;
@@ -201,6 +212,7 @@ else
             TaxRate = _client.TaxRate,
             IsActive = _client.IsActive
         };
+
         _editMode = true;
     }
 
@@ -222,10 +234,10 @@ else
         if (taxRateChanged)
         {
             var hasUnlocked = await ClientService.HasUnlockedReconciliationsAsync(Id);
+
             if (hasUnlocked)
             {
-                warningText = "Changing the tax rate will not affect existing locked cashouts, " +
-                              "but there are unlocked reconciliations that may be impacted.";
+                warningText = "Changing the tax rate will not affect existing locked cashouts, " + "but there are unlocked reconciliations that may be impacted.";
             }
         }
 
@@ -245,6 +257,7 @@ else
         }
 
         var reason = dialogResult.Data as string;
+
         var request = new UpsertClientRequest(
             _form.CompanyName,
             _form.Description,
@@ -257,6 +270,7 @@ else
         if (!result.Succeeded)
         {
             Snackbar.Add(result.Error ?? "Failed to update client.", Severity.Error);
+
             return;
         }
 
@@ -274,4 +288,5 @@ else
         public decimal TaxRate { get; set; }
         public bool IsActive { get; set; } = true;
     }
+
 }
