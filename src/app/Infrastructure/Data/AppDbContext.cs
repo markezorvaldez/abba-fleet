@@ -1,3 +1,4 @@
+using AbbaFleet.Features.Clients;
 using AbbaFleet.Features.Drivers;
 using AbbaFleet.Features.Trucks;
 using AbbaFleet.Shared;
@@ -9,6 +10,8 @@ namespace AbbaFleet.Infrastructure.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbContext<ApplicationUser>(options), IDataProtectionKeyContext
 {
+    public DbSet<Client> Clients { get; set; }
+    public DbSet<Contact> Contacts { get; set; }
     public DbSet<Driver> Drivers { get; set; }
     public DbSet<Truck> Trucks { get; set; }
     public DbSet<Note> Notes { get; set; }

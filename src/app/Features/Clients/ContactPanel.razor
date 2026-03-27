@@ -1,0 +1,169 @@
+@* src/app/Features/Clients/ContactPanel.razor *@
+@using AbbaFleet.Features.Clients
+@inject IContactRepository ContactRepository
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="3" Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <MudText Typo="Typo.subtitle1">Contacts</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                   StartIcon="@Icons.Material.Filled.PersonAdd"
+                   OnClick="OpenAddForm">
+            Add Contact
+        </MudButton>
+    </MudStack>
+
+    @if (_showForm)
+    {
+        <MudCard Outlined="true">
+            <MudCardContent>
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_form.FullName" Label="Full Name" Required="true"/>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_form.Role" Label="Role / Position"/>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_form.PhoneNumber" Label="Phone Number"/>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_form.Email" Label="Email"/>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton OnClick="CancelForm">Cancel</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="string.IsNullOrWhiteSpace(_form.FullName)"
+                           OnClick="SaveForm">
+                    Save
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    }
+
+    @if (_contacts.Count == 0 && !_showForm)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-2">No contacts yet.</MudText>
+    }
+    else
+    {
+        <MudTable Items="_contacts" Hover="true" Dense="true" Elevation="0">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Role</MudTh>
+                <MudTh>Phone</MudTh>
+                <MudTh>Email</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.FullName</MudTd>
+                <MudTd>@(context.Role ?? "—")</MudTd>
+                <MudTd>@(context.PhoneNumber ?? "—")</MudTd>
+                <MudTd>@(context.Email ?? "—")</MudTd>
+                <MudTd>
+                    <MudStack Row="true">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                       OnClick="() => OpenEditForm(context)"/>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                       Color="Color.Error"
+                                       OnClick="() => DeleteContact(context)"/>
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public Guid ClientId { get; set; }
+
+    private List<Contact> _contacts = [];
+    private bool _showForm;
+    private Guid? _editingId;
+    private ContactFormModel _form = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadContacts();
+    }
+
+    private async Task LoadContacts()
+    {
+        var result = await ContactRepository.GetByClientIdAsync(ClientId);
+        _contacts = [..result];
+    }
+
+    private void OpenAddForm()
+    {
+        _editingId = null;
+        _form = new ContactFormModel();
+        _showForm = true;
+    }
+
+    private void OpenEditForm(Contact contact)
+    {
+        _editingId = contact.Id;
+        _form = new ContactFormModel
+        {
+            FullName = contact.FullName,
+            Role = contact.Role,
+            PhoneNumber = contact.PhoneNumber,
+            Email = contact.Email
+        };
+        _showForm = true;
+    }
+
+    private void CancelForm()
+    {
+        _showForm = false;
+        _form = new ContactFormModel();
+        _editingId = null;
+    }
+
+    private async Task SaveForm()
+    {
+        if (string.IsNullOrWhiteSpace(_form.FullName))
+        {
+            return;
+        }
+
+        if (_editingId is null)
+        {
+            var contact = new Contact(ClientId, _form.FullName, _form.Role, _form.PhoneNumber, _form.Email);
+            await ContactRepository.AddAsync(contact);
+            Snackbar.Add("Contact added.", Severity.Success);
+        }
+        else
+        {
+            var contact = await ContactRepository.GetByIdAsync(_editingId.Value);
+            if (contact is not null)
+            {
+                contact.Update(_form.FullName, _form.Role, _form.PhoneNumber, _form.Email);
+                await ContactRepository.UpdateAsync(contact);
+                Snackbar.Add("Contact updated.", Severity.Success);
+            }
+        }
+
+        _showForm = false;
+        _editingId = null;
+        _form = new ContactFormModel();
+        await LoadContacts();
+    }
+
+    private async Task DeleteContact(Contact contact)
+    {
+        await ContactRepository.DeleteAsync(contact);
+        Snackbar.Add("Contact removed.", Severity.Success);
+        await LoadContacts();
+    }
+
+    private sealed class ContactFormModel
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string? Role { get; set; }
+        public string? PhoneNumber { get; set; }
+        public string? Email { get; set; }
+    }
+}
