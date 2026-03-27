@@ -41,7 +41,7 @@ jobs:
         if: steps.changed.outputs.files != ''
         run: |
           if ! git diff --quiet; then
-            echo "::error::CleanupCode found style violations:"
+            echo "::error::CleanupCode found style violations. Fix locally by running:%0A  dotnet tool restore%0A  dotnet jb cleanupcode abba-fleet.sln --profile=\"C# Cleanup\""
             git diff --name-only | while read f; do echo "::error file=$f::Style violation"; done
             exit 1
           fi
