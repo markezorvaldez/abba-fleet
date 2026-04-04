@@ -50,7 +50,10 @@ public class Driver : IAuditable
 
     public IReadOnlyCollection<AuditEntryBase> AuditLog => _auditLog.AsReadOnly();
 
-    public void ClearAuditLog() => _auditLog.Clear();
+    public void ClearAuditLog()
+    {
+        _auditLog.Clear();
+    }
 
     public void Update(
         string fullName,
