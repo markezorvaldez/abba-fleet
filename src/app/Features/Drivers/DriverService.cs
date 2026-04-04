@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using AbbaFleet.Shared;
 using FluentValidation;
+using Microsoft.AspNetCore.Components.Authorization;
 
 namespace AbbaFleet.Features.Drivers;
 
@@ -7,7 +9,8 @@ public class DriverService(
     IValidator<UpsertDriverRequest> validator,
     IDriverRepository repository,
     IFileRepository fileRepository,
-    IFileStorageService fileStorageService) : IDriverService
+    IFileStorageService fileStorageService,
+    AuthenticationStateProvider authStateProvider) : IDriverService
 {
     public async Task<IReadOnlyList<DriverSummary>> GetAllAsync()
     {
@@ -33,13 +36,21 @@ public class DriverService(
             return string.Join(" | ", validation.Errors.Select(e => e.ErrorMessage));
         }
 
+        var userName = await GetCurrentUserNameAsync();
+
+        if (userName is null)
+        {
+            return "Unable to determine the current user.";
+        }
+
         var driver = new Driver(
             request.FullName,
             request.PhoneNumber,
             request.FacebookLink,
             request.Address,
             request.IsReliever,
-            request.DateStarted);
+            request.DateStarted,
+            userName);
 
         await repository.AddAsync(driver);
 
@@ -69,6 +80,13 @@ public class DriverService(
             return "Driver not found.";
         }
 
+        var userName = await GetCurrentUserNameAsync();
+
+        if (userName is null)
+        {
+            return "Unable to determine the current user.";
+        }
+
         driver.Update(
             request.FullName,
             request.PhoneNumber,
@@ -76,7 +94,8 @@ public class DriverService(
             request.Address,
             request.IsActive,
             request.IsReliever,
-            request.DateStarted);
+            request.DateStarted,
+            userName);
 
         await repository.UpdateAsync(driver);
 
@@ -121,14 +140,14 @@ public class DriverService(
             return "Driver is already inactive.";
         }
 
-        driver.Update(
-            driver.FullName,
-            driver.PhoneNumber,
-            driver.FacebookLink,
-            driver.Address,
-            isActive: false,
-            driver.IsReliever,
-            driver.DateStarted);
+        var userName = await GetCurrentUserNameAsync();
+
+        if (userName is null)
+        {
+            return "Unable to determine the current user.";
+        }
+
+        driver.Deactivate(userName, reason);
 
         await repository.UpdateAsync(driver);
 
@@ -149,18 +168,25 @@ public class DriverService(
             return "Driver is already active.";
         }
 
-        driver.Update(
-            driver.FullName,
-            driver.PhoneNumber,
-            driver.FacebookLink,
-            driver.Address,
-            isActive: true,
-            driver.IsReliever,
-            driver.DateStarted);
+        var userName = await GetCurrentUserNameAsync();
+
+        if (userName is null)
+        {
+            return "Unable to determine the current user.";
+        }
+
+        driver.Reactivate(userName);
 
         await repository.UpdateAsync(driver);
 
         return true;
+    }
+
+    private async Task<string?> GetCurrentUserNameAsync()
+    {
+        var state = await authStateProvider.GetAuthenticationStateAsync();
+
+        return state.User.FindFirstValue(ClaimTypes.Name);
     }
 
     private static DriverDetailDto MapToDetail(Driver d)

@@ -6,10 +6,21 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/cleanup-code.sh \"${file}\""
+            "command": "bash .claude/hooks/accumulate-changed-files.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/cleanup-changed-files.sh"
           }
         ]
       }
     ]
-  }
+  },
+  "showClearContextOnPlanAccept": true
 }

@@ -1,4 +1,5 @@
 using AbbaFleet.Features.Drivers;
+using AbbaFleet.Shared;
 using AutoFixture;
 using Xunit;
 
@@ -26,7 +27,42 @@ public class DriverTests
             _fixture.Create<string>(),
             _fixture.Create<string>(),
             false,
-            _fixture.Create<DateOnly>());
+            _fixture.Create<DateOnly>(),
+            _fixture.Create<string>());
+    }
+
+    [Fact]
+    public void ClearAuditLog_EmptiesCollection()
+    {
+        var driver = CreateDriver();
+        Assert.NotEmpty(driver.AuditLog);
+
+        driver.ClearAuditLog();
+
+        Assert.Empty(driver.AuditLog);
+    }
+
+    // --- Audit ---
+
+    [Fact]
+    public void Constructor_AppendsCreatedAuditEntry()
+    {
+        var changedBy = _fixture.Create<string>();
+
+        var driver = new Driver(
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            null,
+            null,
+            false,
+            _fixture.Create<DateOnly>(),
+            changedBy);
+
+        Assert.Single(driver.AuditLog);
+        var entry = Assert.IsType<DriverAuditEntry>(driver.AuditLog.First());
+        Assert.Equal(AuditActionType.Created, entry.ActionType);
+        Assert.Equal(changedBy, entry.ChangedBy);
+        Assert.Equal(driver.Id, entry.DriverId);
     }
 
     [Fact]
@@ -36,7 +72,7 @@ public class DriverTests
         var phone = _fixture.Create<string>();
         var date = _fixture.Create<DateOnly>();
 
-        var driver = new Driver(name, phone, null, null, true, date);
+        var driver = new Driver(name, phone, null, null, true, date, _fixture.Create<string>());
 
         Assert.True(driver.IsActive);
         Assert.True(driver.IsReliever);
@@ -50,7 +86,7 @@ public class DriverTests
     public void Create_ThrowsOnEmptyFullName(string fullName)
     {
         Assert.Throws<ArgumentException>(() =>
-            new Driver(fullName, _fixture.Create<string>(), null, null, false, _fixture.Create<DateOnly>()));
+            new Driver(fullName, _fixture.Create<string>(), null, null, false, _fixture.Create<DateOnly>(), _fixture.Create<string>()));
     }
 
     [Theory]
@@ -59,7 +95,7 @@ public class DriverTests
     public void Create_ThrowsOnEmptyPhoneNumber(string phoneNumber)
     {
         Assert.Throws<ArgumentException>(() =>
-            new Driver(_fixture.Create<string>(), phoneNumber, null, null, false, _fixture.Create<DateOnly>()));
+            new Driver(_fixture.Create<string>(), phoneNumber, null, null, false, _fixture.Create<DateOnly>(), _fixture.Create<string>()));
     }
 
     [Fact]
@@ -76,12 +112,74 @@ public class DriverTests
             $"  {facebook}  ",
             $"  {address}  ",
             false,
-            _fixture.Create<DateOnly>());
+            _fixture.Create<DateOnly>(),
+            _fixture.Create<string>());
 
         Assert.Equal(name, driver.FullName);
         Assert.Equal(phone, driver.PhoneNumber);
         Assert.Equal(facebook, driver.FacebookLink);
         Assert.Equal(address, driver.Address);
+    }
+
+    [Fact]
+    public void Deactivate_SetsIsActiveFalse_AppendsDeactivatedEntry()
+    {
+        var driver = CreateDriver();
+        driver.ClearAuditLog();
+
+        var changedBy = _fixture.Create<string>();
+        var reason = _fixture.Create<string>();
+
+        driver.Deactivate(changedBy, reason);
+
+        Assert.False(driver.IsActive);
+        Assert.Single(driver.AuditLog);
+        var entry = Assert.IsType<DriverAuditEntry>(driver.AuditLog.First());
+        Assert.Equal(AuditActionType.Deactivated, entry.ActionType);
+        Assert.Equal(changedBy, entry.ChangedBy);
+        Assert.Equal(reason, entry.Reason);
+    }
+
+    [Fact]
+    public void Reactivate_SetsIsActiveTrue_AppendsReactivatedEntry()
+    {
+        var driver = CreateDriver();
+        driver.Deactivate(_fixture.Create<string>());
+        driver.ClearAuditLog();
+
+        var changedBy = _fixture.Create<string>();
+
+        driver.Reactivate(changedBy);
+
+        Assert.True(driver.IsActive);
+        Assert.Single(driver.AuditLog);
+        var entry = Assert.IsType<DriverAuditEntry>(driver.AuditLog.First());
+        Assert.Equal(AuditActionType.Reactivated, entry.ActionType);
+        Assert.Equal(changedBy, entry.ChangedBy);
+    }
+
+    [Fact]
+    public void Update_AppendsUpdatedAuditEntry()
+    {
+        var driver = CreateDriver();
+        driver.ClearAuditLog();
+
+        var changedBy = _fixture.Create<string>();
+
+        driver.Update(
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            null,
+            null,
+            true,
+            false,
+            _fixture.Create<DateOnly>(),
+            changedBy);
+
+        Assert.Single(driver.AuditLog);
+        var entry = Assert.IsType<DriverAuditEntry>(driver.AuditLog.First());
+        Assert.Equal(AuditActionType.Updated, entry.ActionType);
+        Assert.Equal(changedBy, entry.ChangedBy);
     }
 
     [Fact]
@@ -101,7 +199,8 @@ public class DriverTests
             newAddress,
             isActive: false,
             isReliever: true,
-            newDate);
+            newDate,
+            _fixture.Create<string>());
 
         Assert.Equal(newName, driver.FullName);
         Assert.Equal(newPhone, driver.PhoneNumber);
@@ -125,7 +224,8 @@ public class DriverTests
             null,
             true,
             false,
-            _fixture.Create<DateOnly>());
+            _fixture.Create<DateOnly>(),
+            _fixture.Create<string>());
 
         Assert.True(driver.UpdatedAt >= beforeUpdate);
     }
@@ -138,7 +238,7 @@ public class DriverTests
         var driver = CreateDriver();
 
         Assert.Throws<ArgumentException>(() =>
-            driver.Update(fullName, _fixture.Create<string>(), null, null, true, false, _fixture.Create<DateOnly>()));
+            driver.Update(fullName, _fixture.Create<string>(), null, null, true, false, _fixture.Create<DateOnly>(), _fixture.Create<string>()));
     }
 
     [Theory]
@@ -149,7 +249,7 @@ public class DriverTests
         var driver = CreateDriver();
 
         Assert.Throws<ArgumentException>(() =>
-            driver.Update(_fixture.Create<string>(), phoneNumber, null, null, true, false, _fixture.Create<DateOnly>()));
+            driver.Update(_fixture.Create<string>(), phoneNumber, null, null, true, false, _fixture.Create<DateOnly>(), _fixture.Create<string>()));
     }
 
     [Fact]
@@ -166,9 +266,33 @@ public class DriverTests
             null,
             true,
             false,
-            _fixture.Create<DateOnly>());
+            _fixture.Create<DateOnly>(),
+            _fixture.Create<string>());
 
         Assert.Equal(newName, driver.FullName);
         Assert.Equal(newPhone, driver.PhoneNumber);
+    }
+
+    [Fact]
+    public void Update_WithReason_IncludesReasonInAuditEntry()
+    {
+        var driver = CreateDriver();
+        driver.ClearAuditLog();
+
+        var reason = _fixture.Create<string>();
+
+        driver.Update(
+            _fixture.Create<string>(),
+            _fixture.Create<string>(),
+            null,
+            null,
+            true,
+            false,
+            _fixture.Create<DateOnly>(),
+            _fixture.Create<string>(),
+            reason);
+
+        var entry = Assert.IsType<DriverAuditEntry>(driver.AuditLog.First());
+        Assert.Equal(reason, entry.Reason);
     }
 }

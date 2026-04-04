@@ -1,7 +1,11 @@
+using AbbaFleet.Shared;
+
 namespace AbbaFleet.Features.Drivers;
 
-public class Driver
+public class Driver : IAuditable
 {
+    private readonly List<AuditEntryBase> _auditLog = [];
+
     private Driver() { } // EF Core
 
     public Driver(
@@ -10,7 +14,8 @@ public class Driver
         string? facebookLink,
         string? address,
         bool isReliever,
-        DateOnly dateStarted)
+        DateOnly dateStarted,
+        string changedBy)
     {
         var trimmedName = fullName.Trim();
         var trimmedPhone = phoneNumber.Trim();
@@ -28,6 +33,8 @@ public class Driver
         IsActive = true;
         CreatedAt = DateTimeOffset.UtcNow;
         UpdatedAt = DateTimeOffset.UtcNow;
+
+        _auditLog.Add(new DriverAuditEntry(Id, AuditActionType.Created, changedBy));
     }
 
     public Guid Id { get; private set; }
@@ -41,6 +48,10 @@ public class Driver
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
+    public IReadOnlyCollection<AuditEntryBase> AuditLog => _auditLog.AsReadOnly();
+
+    public void ClearAuditLog() => _auditLog.Clear();
+
     public void Update(
         string fullName,
         string phoneNumber,
@@ -48,7 +59,9 @@ public class Driver
         string? address,
         bool isActive,
         bool isReliever,
-        DateOnly dateStarted)
+        DateOnly dateStarted,
+        string changedBy,
+        string? reason = null)
     {
         var trimmedName = fullName.Trim();
         var trimmedPhone = phoneNumber.Trim();
@@ -64,5 +77,23 @@ public class Driver
         IsReliever = isReliever;
         DateStarted = dateStarted;
         UpdatedAt = DateTimeOffset.UtcNow;
+
+        _auditLog.Add(new DriverAuditEntry(Id, AuditActionType.Updated, changedBy, reason));
+    }
+
+    public void Deactivate(string changedBy, string? reason = null)
+    {
+        IsActive = false;
+        UpdatedAt = DateTimeOffset.UtcNow;
+
+        _auditLog.Add(new DriverAuditEntry(Id, AuditActionType.Deactivated, changedBy, reason));
+    }
+
+    public void Reactivate(string changedBy, string? reason = null)
+    {
+        IsActive = true;
+        UpdatedAt = DateTimeOffset.UtcNow;
+
+        _auditLog.Add(new DriverAuditEntry(Id, AuditActionType.Reactivated, changedBy, reason));
     }
 }

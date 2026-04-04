@@ -17,11 +17,33 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
     public DbSet<Note> Notes { get; set; }
     public DbSet<InvestmentEntry> InvestmentEntries { get; set; }
     public DbSet<AttachedFile> AttachedFiles { get; set; }
+    public DbSet<DriverAuditEntry> DriverAuditEntries { get; set; }
     public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var auditableEntities = ChangeTracker.Entries<IAuditable>()
+                                             .Select(e => e.Entity)
+                                             .Where(e => e.AuditLog.Count > 0)
+                                             .ToList();
+
+        foreach (var entity in auditableEntities)
+        {
+            foreach (var entry in entity.AuditLog)
+            {
+                Add(entry);
+            }
+
+            entity.ClearAuditLog();
+        }
+
+        return await base.SaveChangesAsync(cancellationToken);
+    }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        builder.Ignore<AuditEntryBase>();
         builder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 }
