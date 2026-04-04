@@ -92,10 +92,18 @@ public class DriverService(
             request.PhoneNumber,
             request.FacebookLink,
             request.Address,
-            request.IsActive,
             request.IsReliever,
             request.DateStarted,
             userName);
+
+        if (!request.IsActive && driver.IsActive)
+        {
+            driver.Deactivate(userName);
+        }
+        else if (request.IsActive && !driver.IsActive)
+        {
+            driver.Reactivate(userName);
+        }
 
         await repository.UpdateAsync(driver);
 

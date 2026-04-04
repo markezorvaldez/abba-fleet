@@ -171,7 +171,6 @@ public class DriverTests
             _fixture.Create<string>(),
             null,
             null,
-            true,
             false,
             _fixture.Create<DateOnly>(),
             changedBy);
@@ -197,7 +196,6 @@ public class DriverTests
             newPhone,
             newFacebook,
             newAddress,
-            isActive: false,
             isReliever: true,
             newDate,
             _fixture.Create<string>());
@@ -206,7 +204,6 @@ public class DriverTests
         Assert.Equal(newPhone, driver.PhoneNumber);
         Assert.Equal(newFacebook, driver.FacebookLink);
         Assert.Equal(newAddress, driver.Address);
-        Assert.False(driver.IsActive);
         Assert.True(driver.IsReliever);
         Assert.Equal(newDate, driver.DateStarted);
     }
@@ -222,7 +219,6 @@ public class DriverTests
             _fixture.Create<string>(),
             null,
             null,
-            true,
             false,
             _fixture.Create<DateOnly>(),
             _fixture.Create<string>());
@@ -238,7 +234,7 @@ public class DriverTests
         var driver = CreateDriver();
 
         Assert.Throws<ArgumentException>(() =>
-            driver.Update(fullName, _fixture.Create<string>(), null, null, true, false, _fixture.Create<DateOnly>(), _fixture.Create<string>()));
+            driver.Update(fullName, _fixture.Create<string>(), null, null, false, _fixture.Create<DateOnly>(), _fixture.Create<string>()));
     }
 
     [Theory]
@@ -249,7 +245,7 @@ public class DriverTests
         var driver = CreateDriver();
 
         Assert.Throws<ArgumentException>(() =>
-            driver.Update(_fixture.Create<string>(), phoneNumber, null, null, true, false, _fixture.Create<DateOnly>(), _fixture.Create<string>()));
+            driver.Update(_fixture.Create<string>(), phoneNumber, null, null, false, _fixture.Create<DateOnly>(), _fixture.Create<string>()));
     }
 
     [Fact]
@@ -264,7 +260,6 @@ public class DriverTests
             $"  {newPhone}  ",
             null,
             null,
-            true,
             false,
             _fixture.Create<DateOnly>(),
             _fixture.Create<string>());
@@ -286,7 +281,6 @@ public class DriverTests
             _fixture.Create<string>(),
             null,
             null,
-            true,
             false,
             _fixture.Create<DateOnly>(),
             _fixture.Create<string>(),

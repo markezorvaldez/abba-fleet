@@ -60,7 +60,6 @@ public class Driver : IAuditable
         string phoneNumber,
         string? facebookLink,
         string? address,
-        bool isActive,
         bool isReliever,
         DateOnly dateStarted,
         string changedBy,
@@ -76,7 +75,6 @@ public class Driver : IAuditable
         PhoneNumber = trimmedPhone;
         FacebookLink = facebookLink?.Trim();
         Address = address?.Trim();
-        IsActive = isActive;
         IsReliever = isReliever;
         DateStarted = dateStarted;
         UpdatedAt = DateTimeOffset.UtcNow;
