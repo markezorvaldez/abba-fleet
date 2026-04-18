@@ -28,5 +28,7 @@ public class DriverConfiguration : IEntityTypeConfiguration<Driver>
                .IsRequired();
 
         builder.HasIndex(d => d.IsActive);
+
+        builder.Ignore(d => d.AuditLog);
     }
 }
