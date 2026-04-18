@@ -38,14 +38,13 @@ App: http://localhost:5000
 
 ## Code style
 
-Code style is enforced by ReSharper CleanupCode. The tool is installed as a local .NET tool:
+Code style is enforced by `dotnet format`, which reads `.editorconfig`:
 
 ```bash
-dotnet tool restore
-dotnet jb cleanupcode abba-fleet.sln --profile="C# Cleanup"
+dotnet format abba-fleet.sln
 ```
 
-If a PR fails the **Code Style** check, run the command above to automatically fix violations, then commit and push.
+If a PR fails the format check, run the command above to automatically fix violations, then commit and push.
 
 ## Architecture decisions
 
